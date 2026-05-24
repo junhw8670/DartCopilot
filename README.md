@@ -44,18 +44,13 @@ DartCopilot/
       xml_utils.py       # DART 사업보고서 XML 파싱
       rag.py             # Chroma 인덱싱 + Rag 질의응답
       dart_client.py     # OpenDART API 래퍼
-      agents/
-        base.py          # create_react_agent 공통 헬퍼
-        supervisor.py    # 질문 라우팅
-        business_report.py
-        ratio.py
-        peer.py
-        trend.py
-        amendment.py
-        explainer.py
     mcp_servers/
         dart_server.py    # FastMCP 기반 DART OpenAPI MCP 서버
         kifrs_server.py   # FastMCP 기반 K-IFRS RAG MCP 서버
+    scripts/
+        build_kifrs_index.py
+        OpenDART_API_test.py
+        OpenDART_document_test.py
     docs/
         devlog/           # 개발일지
     cache/                

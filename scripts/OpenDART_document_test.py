@@ -13,7 +13,7 @@ def load_env(env_path: Path) -> dict:
         env[key.strip()] = val.strip()
     return env
 
-env = load_env(Path(__file__).parent / ".env")
+env = load_env(Path(__file__).parent.parent / ".env")
 API_KEY = env.get("OPENDART_API_KEY")
 if not API_KEY:
     raise RuntimeError(".env에 OPENDART_API_KEY가 없습니다.")
@@ -21,7 +21,7 @@ if not API_KEY:
 CORP_CODE = "00126380"
 RCEPT_NO = "20240312000736"
 
-cache_dir = Path(__file__).parent / "cache" / CORP_CODE / RCEPT_NO
+cache_dir = Path(__file__).parent.parent / "cache" / CORP_CODE / RCEPT_NO
 cache_dir.mkdir(parents=True, exist_ok=True)
 
 url = "https://opendart.fss.or.kr/api/document.xml"

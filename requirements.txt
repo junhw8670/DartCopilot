@@ -1,1 +1,5 @@
 requests>=2.31.0
+langgraph-supervisor
+langchain
+langchain-openai
+langgraph

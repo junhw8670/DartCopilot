@@ -1,30 +1,67 @@
-from mcp.server.fastmcp import FastMCP
-from langchain_chroma import Chroma
-from langchain_openai import OpenAIEmbeddings
+"""K-IFRS RAG MCP server.
+
+Two tools:
+- search_kifrs:           hybrid BM25 + dense-vector semantic search over the index
+- get_standard_by_number: exact metadata lookup by standard/paragraph reference
+"""
+
+from __future__ import annotations
+
 from pathlib import Path
-from typing import Optional
+from typing import Any, Optional
+
+from dotenv import load_dotenv
+from langchain.retrievers import EnsembleRetriever
+from langchain_chroma import Chroma
+from langchain_community.retrievers import BM25Retriever
+from langchain_core.documents import Document
+from langchain_openai import OpenAIEmbeddings
+from mcp.server.fastmcp import FastMCP
+
+load_dotenv()
 
 mcp = FastMCP("KifrsRAG")
 
-VECTOR_DIR = Path(__file__).resolve().parent.parent / "cache" / "kifrs_chroma"
-embeddings = OpenAIEmbeddings(model="text-embedding-3-small")
+BASE_DIR = Path(__file__).resolve().parent.parent
+VECTOR_DIR = BASE_DIR / "cache" / "kifrs_chroma"
+COLLECTION_NAME = "kifrs"
+EMBEDDING_MODEL = "text-embedding-3-large"
+
+embeddings = OpenAIEmbeddings(model=EMBEDDING_MODEL)
 vectorstore = Chroma(
-    collection_name="kifrs",
+    collection_name=COLLECTION_NAME,
     embedding_function=embeddings,
     persist_directory=str(VECTOR_DIR),
 )
 
-@mcp.tool()
-def search_kifrs(query: str, top_k: int = 5) -> dict:
-    """Search the K-IFRS corpus by semantic similarity.
 
-    Performs cosine-similarity search over pre-embedded K-IFRS body text (62 standards, BC sections excluded). 
-    Each result includes the standard number, paragraph number, body text, and source PDF for citation.
+_raw = vectorstore.get()
+_docs = [
+    Document(page_content=_raw["documents"][i], metadata=_raw["metadatas"][i])
+    for i in range(len(_raw["documents"]))
+]
+_bm25 = BM25Retriever.from_documents(_docs)
+_bm25.k = 10
+
+_hybrid = EnsembleRetriever(
+    retrievers=[_bm25, vectorstore.as_retriever(search_kwargs={"k": 10})],
+    weights=[0.5, 0.5],
+)
+
+
+@mcp.tool()
+def search_kifrs(query: str, top_k: int = 5) -> dict[str, Any]:
+    """Search the K-IFRS corpus by hybrid BM25 + dense vector similarity.
+
+    Runs both keyword (BM25) and semantic (cosine) search over the indexed
+    standards via LangChain's EnsembleRetriever, which internally fuses the
+    rankings with Reciprocal Rank Fusion. Each result includes the standard
+    number, paragraph number, body text, and source PDF for citation.
 
     Args:
-        query: Search query in Korean natural language (e.g., "수익 인식 시점", "금융상품 분류 기준", "리스 회계 처리 방법").
-               Precision improves with accurate accounting terminology.
-        top_k: Number of results. Default 5.
+        query: Natural-language Korean query
+            (e.g., "수익 인식 시점", "리스 회계처리 방법", "금융자산 손상").
+        top_k: Number of fused results to return. Default 5.
 
     Returns:
         {
@@ -34,9 +71,8 @@ def search_kifrs(query: str, top_k: int = 5) -> dict:
                     "standard": "K-IFRS 1115",
                     "standard_name": "고객과의 계약에서 생기는 수익",
                     "paragraph": "31",
-                    "text": "기업은 고객에게 약속한 재화나 용역...",
-                    "source_file": "K-IFRS_1115_수익.pdf",
-                    "score": 0.87
+                    "text": "...",
+                    "source_file": "시행중_K-IFRS_제1115호_...pdf"
                 },
                 ...
             ]
@@ -44,54 +80,17 @@ def search_kifrs(query: str, top_k: int = 5) -> dict:
 
         ALWAYS cite (standard, paragraph) in the final answer.
     """
-    docs = vectorstore.similarity_search_with_score(query, k=top_k)
+    hits = _hybrid.invoke(query)[:top_k]
     return {
         "query": query,
         "results": [
             {
-                "standard": doc.metadata.get("standard"),
-                "standard_name": doc.metadata.get("standard_name"),
-                "paragraph": doc.metadata.get("paragraph"),
-                "text": doc.page_content,
-                "source_file": doc.metadata.get("source_file"),
-                "score": float(1 - score),
+                "standard": d.metadata.get("standard"),
+                "standard_name": d.metadata.get("standard_name"),
+                "paragraph": d.metadata.get("paragraph"),
+                "text": d.page_content,
+                "source_file": d.metadata.get("source_file"),
             }
-            for doc, score in docs
-        ]
+            for d in hits
+        ],
     }
-
-@mcp.tool()
-def get_standard_by_number(standard: str, paragraph: Optional[str] = None) -> dict:
-    """Direct lookup of a K-IFRS standard by number and optional paragraph.
-
-    Use this when the user specifies an exact location (e.g., "K-IFRS 1115 paragraph BC31").
-    Bypasses semantic search and always returns the precise text.
-
-    Args:
-        standard: Standard number. Accepts variations: "K-IFRS 1115", "1115", "KIFRS1115".
-        paragraph: Paragraph number (e.g., "BC31").
-                   If None, returns the table of contents/overview for the standard.
-
-    Returns:
-        With paragraph:
-        {
-            "standard": "K-IFRS 1115",
-            "standard_name": "고객과의 계약에서 생기는 수익",
-            "paragraph": "BC31",
-            "text": "기업은 고객에게 약속한 재화나 용역...",
-            "source_file": "K-IFRS_1115_수익.pdf"
-        }
-        Without paragraph:
-        {
-            "standard": "K-IFRS 1115",
-            "standard_name": "고객과의 계약에서 생기는 수익",
-            "toc": [
-                {"section": "목적", "paragraphs": "BC1"},
-                {"section": "적용범위", "paragraphs": "BC5~8"},
-                ...
-            ]
-        }
-    """
-
-if __name__ == "__main__":
-    mcp.run(transport="stdio")

@@ -37,7 +37,7 @@ OpenDART 공시 데이터(사업보고서 XML + 재무제표 JSON)와 K-IFRS 회
 DartCopilot/
     app/
       main.py            # FastAPI 엔트리포인트, /api/dart/query 라우트
-      graph.py           # LangGraph Supervisor + conditional edges
+      graph.py           # LangGraph Supervisor
       models.py          # Pydantic State / 데이터 모델
       llm_utils.py       # .env 로드 + LLM 클라이언트 생성
       pdf_utils.py       # K-IFRS PDF 파싱

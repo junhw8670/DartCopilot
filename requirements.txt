@@ -3,3 +3,11 @@ langgraph-supervisor
 langchain
 langchain-openai
 langgraph
+python-dotenv
+PyMuPDF
+langchain-chroma
+langchain-text-splitters
+chromadb
+langchain-community
+rank_bm25
+mcp

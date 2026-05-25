@@ -1,9 +1,15 @@
+from __future__ import annotations
+
+from typing import Sequence
+
 from langchain.agents import create_agent
 from langgraph_supervisor import create_supervisor
 from langchain_openai import ChatOpenAI
+from langchain_core.tools import BaseTool
 
 
 model = ChatOpenAI(model="gpt-5.4-2026-03-05")
+
 
 business_report_agent = create_agent(
     model=model,
@@ -56,13 +62,14 @@ amendment_agent = create_agent(
 
 kifrs_agent = create_agent(
     model=model,
-    tools=[search_kifrs, get_standard_by_number],
+    tools=[search_kifrs],
     name="kifrs_expert",
     system_prompt=(
-        "You are a K-IFRS (한국채택국제회계기준) standards search and citation expert."
-        "Always cite the source (standard number + paragraph number) in your answer."
+        "You are a K-IFRS (한국채택국제회계기준) standards search and citation expert. "
+        "Always cite the source (standard number + paragraph number) in your answer. "
         "You can operate stand-alone without any company context."
-    ),)
+    ),
+)
 
 graph_builder = create_supervisor(
     [business_report_agent, ratio_agent, peer_agent, trend_agent, amendment_agent, kifrs_agent],

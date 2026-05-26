@@ -11,3 +11,6 @@ chromadb
 langchain-community
 rank_bm25
 mcp
+langchain-mcp-adapters
+FastAPI
+langchain-classic

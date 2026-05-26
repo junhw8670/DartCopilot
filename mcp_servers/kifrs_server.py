@@ -1,7 +1,7 @@
 """K-IFRS RAG MCP server.
 
 Two tools:
-- search_kifrs:           hybrid BM25 + dense-vector semantic search over the index
+- search_kifrs: hybrid BM25 + dense-vector semantic search over the index
 - get_standard_by_number: exact metadata lookup by standard/paragraph reference
 """
 
@@ -10,9 +10,9 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any, Optional
 
-from dotenv import load_dotenv
-from langchain.retrievers import EnsembleRetriever
+from dotenv import load_dotenv 
 from langchain_chroma import Chroma
+from langchain_classic.retrievers import EnsembleRetriever
 from langchain_community.retrievers import BM25Retriever
 from langchain_core.documents import Document
 from langchain_openai import OpenAIEmbeddings
@@ -35,19 +35,25 @@ vectorstore = Chroma(
 )
 
 
-_raw = vectorstore.get()
-_docs = [
-    Document(page_content=_raw["documents"][i], metadata=_raw["metadatas"][i])
-    for i in range(len(_raw["documents"]))
-]
-_bm25 = BM25Retriever.from_documents(_docs)
-_bm25.k = 10
+_hybrid: EnsembleRetriever | None = None
 
-_hybrid = EnsembleRetriever(
-    retrievers=[_bm25, vectorstore.as_retriever(search_kwargs={"k": 10})],
-    weights=[0.5, 0.5],
-)
+def _get_hybrid() -> EnsembleRetriever:
+    """Lazy build/cache BM25 + dense vector hybrid retriever.""" 
+    global _hybrid
+    if _hybrid is None:
+        raw = vectorstore.get()
+        docs = [
+            Document(page_content=raw["documents"][i], metadata=raw["metadatas"][i])
+            for i in range(len(raw["documents"]))
+        ]
+        bm25 = BM25Retriever.from_documents(docs)
+        bm25.k = 10
 
+        _hybrid = EnsembleRetriever(
+            retrievers=[bm25, vectorstore.as_retriever(search_kwargs={"k": 10})],
+            weights=[0.5, 0.5],
+        )
+    return _hybrid
 
 @mcp.tool()
 def search_kifrs(query: str, top_k: int = 5) -> dict[str, Any]:
@@ -80,7 +86,7 @@ def search_kifrs(query: str, top_k: int = 5) -> dict[str, Any]:
 
         ALWAYS cite (standard, paragraph) in the final answer.
     """
-    hits = _hybrid.invoke(query)[:top_k]
+    hits = _get_hybrid().invoke(query)[:top_k]
     return {
         "query": query,
         "results": [
@@ -94,3 +100,6 @@ def search_kifrs(query: str, top_k: int = 5) -> dict[str, Any]:
             for d in hits
         ],
     }
+    
+if __name__ == "__main__":
+    mcp.run(transport="stdio")

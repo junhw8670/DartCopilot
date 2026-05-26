@@ -5,12 +5,72 @@ from io import BytesIO
 from pathlib import Path
 from typing import Optional
 import os
+from dotenv import load_dotenv
+import re
+import xml.etree.ElementTree as ET
+from difflib import SequenceMatcher
+
+load_dotenv()
 
 mcp = FastMCP("DartOpenAPI")
 
 API_KEY = os.getenv("OPENDART_API_KEY")
 BASE_URL = "https://opendart.fss.or.kr/api"
 CACHE_DIR = Path(__file__).resolve().parent.parent / "cache"
+
+_companies: list[dict] | None = None
+
+_NORMALIZE_RE = re.compile(r"\s+|주식회사|\(주\)|㈜")
+
+def _normalize(name:str) -> str:
+    """Strip whitespace and corporate suffix variations for tolerant matching."""
+    return _NORMALIZE_RE.sub("", name)
+
+def _download_corpcode_zip(dst: Path) -> None:
+    """Download OpenDART's corp_code master list and extract CORPCODE.xml to disk."""
+    url = f"{BASE_URL}/corpCode.xml"
+    params = {"crtfc_key": API_KEY}
+
+    r = requests.get(url, params=params, timeout=30)
+    r.raise_for_status()
+
+    if r.content[:2] != b"PK":
+        raise RuntimeError(
+            f"OpenDART corpCode.xml 응답이 ZIP이 아님: "
+            f"{r.content[:200]!r}"
+        )
+    dst.parent.mkdir(parents=True, exist_ok=True)
+    with zipfile.ZipFile(BytesIO(r.content)) as zf:
+        zf.extract("CORPCODE.xml", dst.parent)
+
+def _parse_corpcode_xml(path: Path) -> list[dict]:
+    """Parse CORPCODE.xml into a list of dicts for listed companies."""
+    tree = ET.parse(path)
+    root = tree.getroot()
+
+    companies: list[dict] = []
+    for item in root.findall("list"):
+        stock_code = (item.findtext("stock_code") or "").strip()
+
+        if not stock_code:
+            continue
+
+        companies.append({
+            "corp_code": (item.findtext("corp_code") or "").strip(),
+            "corp_name": (item.findtext("corp_name") or "").strip(),
+            "stock_code": stock_code,
+        })
+    return companies
+
+def _load_companies() -> list[dict]:
+    """Lazy-load the corp code master list (download + parse on first call)."""
+    global _companies
+    if _companies is None:
+        cache_path = CACHE_DIR / "CORPCODE.xml"
+        if not cache_path.exists():
+            _download_corpcode_zip(cache_path)
+        _companies = _parse_corpcode_xml(cache_path)
+    return _companies
 
 
 @mcp.tool()
@@ -35,6 +95,41 @@ def search_company(name: str) -> dict:
 
         On failure: {"error": "No matching company found for <name>."}
     """
+    query = _normalize(name)
+    if not query:
+        return {"error": "Empty company name."}
+    companies = _load_companies()
+
+    candidates: list[tuple[float, dict]] = []
+
+    for c in companies:
+        target = _normalize(c["corp_name"])
+        if not target:
+            continue
+        if target == query:
+            score = 1.0
+        elif query in target or target in query:
+            score = 0.6 + 0.4 * min(len(query), len(target)) / max(len(query), len(target))
+        else:
+            ratio = SequenceMatcher(None, query, target).ratio()
+            if ratio < 0.6:
+                continue
+            score = ratio
+        candidates.append((score, c))
+
+    if not candidates:
+        return {"error": f"No matching company found for {name}."}
+    
+    candidates.sort(key=lambda x: x[0], reverse=True)
+    best_score, best = candidates[0]
+
+    return {
+        "corp_code": best["corp_code"],
+        "stock_code": best["stock_code"],
+        "corp_name": best["corp_name"],
+        "match_score": round(best_score, 4),
+    }
+
 
 @mcp.tool()
 def list_disclosures(
@@ -70,6 +165,49 @@ def list_disclosures(
             ]
         }
     """
+    url = f"{BASE_URL}/list.json"
+    params = {
+        "crtfc_key": API_KEY,
+        "corp_code": corp_code,
+        "bgn_de": bgn_de,
+        "end_de": end_de,
+        "pblntf_ty": pblntf_ty,
+        "page_count": "100",
+    }
+    
+    r = requests.get(url, params=params, timeout=15)
+    r.raise_for_status()
+    data = r.json()
+
+    status = data.get("status")
+    if status == "013":
+        return {"status": "013", "total_count": 0, "list": []}
+    if status != "000":
+        return {
+            "error": f"OpenDART status={status}, message={data.get('message')}"
+        }
+    
+    items = []
+    for raw in data.get("list", []):
+        report_nm = (raw.get("report_nm") or "").strip()
+        is_amendment = (
+            report_nm.startswith("[") and "정정" in report_nm.split("]")[0]
+        )
+
+        items.append({
+            "rcept_no": raw.get("rcept_no"),
+            "rcept_dt": raw.get("rcept_dt"),
+            "report_nm": report_nm,
+            "corp_name": raw.get("corp_name"),
+            "is_amendment": is_amendment,
+        })
+    
+    return {
+        "status": status,
+        "total_count": data.get("total_count", len(items)),
+        "list": items,
+    }
+
 
 @mcp.tool()
 def fetch_report(rcept_no: str) -> dict:

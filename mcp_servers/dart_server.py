@@ -9,6 +9,8 @@ from dotenv import load_dotenv
 import re
 import xml.etree.ElementTree as ET
 from difflib import SequenceMatcher
+import json
+from bs4 import BeautifulSoup
 
 load_dotenv()
 
@@ -71,6 +73,31 @@ def _load_companies() -> list[dict]:
             _download_corpcode_zip(cache_path)
         _companies = _parse_corpcode_xml(cache_path)
     return _companies
+
+def _parse_amount(s: str | None) -> int | None:
+    """Convert an OpenDART amount string (e.g. "302,231,000,000") to int."""
+    if not s:
+        return None
+    s = s.replace(",", "").strip()
+    if not s or s == "-":
+        return None
+    try:
+        return int(s)
+    except ValueError:
+        return None
+
+
+def _extract_rows(table_elem) -> list[list[str]]:
+    """Extract rows from a <TABLE> as [[cell_text, ...], ...]."""
+    rows: list[list[str]] = []
+    for tr in table_elem.find_all("TR"):
+        cells = [
+            cell.get_text(separator=" ", strip=True)
+            for cell in tr.find_all(["TD", "TH", "TU", "TE"])
+        ]
+        if any(c for c in cells):
+            rows.append(cells)
+    return rows
 
 
 @mcp.tool()
@@ -216,7 +243,7 @@ def fetch_report(rcept_no: str) -> dict:
     Wraps OpenDART /api/document.xml endpoint. Korean business reports are delivered as XML(dart4.xsd schema), NOT PDF.
     The ZIP contains a main XML plus optional attachment XMLs.
 
-    Files are cached at cache/{corp_code}/{rcept_no}/ for instant re-access.
+    Files are cached at cache/{rcept_no}/ for instant re-access.
 
     Args:
         rcept_no: 14-digit DART receipt number (e.g. "20240312000736").
@@ -234,6 +261,35 @@ def fetch_report(rcept_no: str) -> dict:
                 "size_bytes": 6150873
         }
     """
+    cache_dir = CACHE_DIR / rcept_no
+
+    if not (cache_dir.exists() and any(cache_dir.glob("*.xml"))):
+        r = requests.get(
+            f"{BASE_URL}/document.xml",
+            params={"crtfc_key": API_KEY, "rcept_no": rcept_no},
+            timeout=120
+        )
+        r.raise_for_status()
+        if r.content[:2] != b"PK":
+            try:
+                data = r.json()
+                return {"error": f"OpenDART status={data.get('status')}, message={data.get('message')}"}
+            except Exception:
+                return {"error": f"Invalid response: {r.content[:200]!r}"}
+        
+        cache_dir.mkdir(parents=True, exist_ok=True)
+        with zipfile.ZipFile(BytesIO(r.content)) as zf:
+            zf.extractall(cache_dir)
+
+    xml_paths = sorted(str(p) for p in cache_dir.glob("*.xml"))
+
+    return {
+        "rcept_no": rcept_no,
+        "xml_paths": xml_paths,
+        "main_xml": xml_paths[0] if xml_paths else "",
+        "size_bytes": sum(Path(p).stat().st_size for p in xml_paths),
+    }
+
 
 @mcp.tool()
 def parse_business_report_xml(xml_path: str, sections: Optional[list[str]] = None)  -> dict:
@@ -264,6 +320,58 @@ def parse_business_report_xml(xml_path: str, sections: Optional[list[str]] = Non
             ]
         }
     """
+    with open(xml_path, encoding="utf-8") as f:
+        raw = f.read()
+    
+    head = BeautifulSoup(raw[:10000], "lxml-xml")
+    company_tag = head.find("COMPANY-NAME")
+    document_tag = head.find("DOCUMENT-NAME")
+    pf_tag = head.find("TU", {"AUNIT": "PERIODFROM"})
+    pt_tag = head.find("TU", {"AUNIT": "PERIODTO"})
+
+    title_pat = re.compile(r'<TITLE\b[^>]*>\s*([IVX]+\.\s+[^<]+?)\s*</TITLE>')
+    matches = list(title_pat.finditer(raw))
+
+    all_sections: list[tuple[str, str]] = []
+    for i, m in enumerate(matches):
+        clean_name = re.sub(r'^[IVX]+\.\s+', '', m.group(1).strip())
+        start = m.end()
+        end = matches[i + 1].start() if i + 1 < len(matches) else len(raw)
+        all_sections.append((clean_name, raw[start:end]))
+
+    if sections is not None:
+        all_sections = [
+            (name, body) for name, body in all_sections
+            if any(req in name for req in sections)
+        ]
+
+    result_sections: dict[str, str] = {}
+    result_tables: list[dict] = []
+
+    for name, body in all_sections:
+        soup = BeautifulSoup(f"<root>{body}</root>", "lxml-xml")
+
+        paragraphs = [
+            p.get_text(strip=True)
+            for p in soup.find_all("P")
+            if p.get_text(strip=True)
+        ]
+        result_sections[name] = " ".join(paragraphs)
+
+        for table in soup.find_all("TABLE"):
+            rows = _extract_rows(table)
+            if rows:
+                result_tables.append({"section": name, "rows": rows})
+
+    return {
+        "company_name": company_tag.get_text(strip=True) if company_tag else "",
+        "report_name": document_tag.get_text(strip=True) if document_tag else "",
+        "period_from": pf_tag.get("AUNITVALUE", "") if pf_tag else "",
+        "period_to": pt_tag.get("AUNITVALUE", "") if pt_tag else "",
+        "sections": result_sections,
+        "tables": result_tables,
+    }
+
 
 @mcp.tool()
 def fetch_financial(corp_code: str, year: int, report_code: str = "11011") -> dict:
@@ -282,7 +390,7 @@ def fetch_financial(corp_code: str, year: int, report_code: str = "11011") -> di
             "year": 2023,
             "fs_type": "CFS",
             "accounts": [
-                {"account_nm": "매출액", "thstrm_amount": "302231360000000",
+                {"sj_nm": "재무상태표", "account_nm": "매출액", "thstrm_amount": "302231360000000",
                  "frmtrm_amount": "279060475000000", "bfefrmtrm_amount": "..."},
                 {"account_nm": "영업이익", ...},
                 ...
@@ -294,31 +402,122 @@ def fetch_financial(corp_code: str, year: int, report_code: str = "11011") -> di
         - ROE = 당기순이익 / 자기자본총계
         - 영업이익률 = 영업이익 / 매출액
     """
+    url = (f"{BASE_URL}/fnlttSinglAcntAll.json")
+    params ={
+        "crtfc_key": API_KEY,
+        "corp_code": corp_code,
+        "bsns_year": str(year),
+        "reprt_code": report_code,
+        "fs_div": "CFS",
+    }
+
+    r = requests.get(url, params=params, timeout=15)
+    r.raise_for_status()
+    data = r.json()
+
+    if data.get("status") == "013":
+        params["fs_div"] = "OFS"
+        r = requests.get(url, params=params, timeout=15)
+        r.raise_for_status()
+        data = r.json()
+    
+    status = data.get("status")
+    if status != "000":
+        return {
+            "error": f"OpenDART status={status}, message={data.get('message')}",
+            "corp_code": corp_code,
+            "year": year,
+        }
+    
+    fs_type = params["fs_div"]
+    
+    accounts = []
+    for raw in data.get("list", []):
+        accounts.append({
+            "sj_nm": raw.get("sj_nm"),
+            "account_nm": raw.get("account_nm"),
+            "thstrm_amount": _parse_amount(raw.get("thstrm_amount")),
+            "frmtrm_amount": _parse_amount(raw.get("frmtrm_amount")),
+            "bfefrmtrm_amount": _parse_amount(raw.get("bfefrmtrm_amount")),
+        })
+
+    return {
+        "corp_code": corp_code,
+        "year": year,
+        "fs_type": fs_type,
+        "accounts": accounts,
+    }
+
 
 @mcp.tool()
 def fetch_peers(corp_code: str, top_k: int = 10) -> dict:
-    """Return listed companies sharing the same industry code as the target.
+    """Return listed companies sharing the same KRX industry as the target.
 
-    Retrieves the target's industry code via /api/company.json, 
-    then filters the corpCode.xml cache for other listed companies with the same code.
+    Looks up the target's KRX industry classification from a precomputed cache
+    (cache/industry_codes.json), then filters for other listed companies with
+    the same industry name. The cache is built by scripts/build_industry_cache.py
+    using FinanceDataReader (KRX descriptive listing).
 
     Args:
         corp_code: Reference company's 8-digit DART corp_code.
         top_k: Max number of peers to return. Default 10.
-    
+
     Returns:
         {
             "base_corp_code": "00126380",
             "base_corp_name": "삼성전자",
-            "industry_code": "26",
-            "industry_name": "전자제품 제조업",
-            "total_peers_in_industry": 2,
+            "industry_name": "반도체와관련장비",
+            "market": "KOSPI",
+            "total_peers_in_industry": 12,
             "peers": [
-                {"corp_code": "00164779", "corp_name": "SK하이닉스", "stock_code": "000660"},
+                {
+                    "corp_code": "00164779",
+                    "corp_name": "SK하이닉스",
+                    "stock_code": "000660",
+                    "market": "KOSPI"
+                },
                 ...
             ]
         }
+
+        On failure: {"error": "..."} (missing cache, unlisted company, or no industry data).
     """
+    cache_path = CACHE_DIR /"industry_codes.json"
+    if not cache_path.exists():
+        return {"error": "industry_codes.json cache missing."}
+
+    industry_map: dict[str, dict] = json.loads(
+        cache_path.read_text(encoding="utf-8")
+    )
+    
+    target = industry_map.get(corp_code)
+    if target is None:
+        return {"error": f"{corp_code} missing in industry cache." }
+
+    target_industry = target.get("industry")
+    if not target_industry:
+        return {"error": f"{target.get('corp_name')} missing an industry info."}
+
+    peers: list[dict] = []
+    for cc, info in industry_map.items():
+        if cc == corp_code:
+            continue
+        if info.get("industry") == target_industry:
+            peers.append({
+                "corp_code": cc,
+                "corp_name": info.get("corp_name"),
+                "stock_code": info.get("stock_code"),
+                "market": info.get("market"),
+            })
+    return {
+        "base_corp_code": corp_code,
+        "base_corp_name": target.get("corp_name"),
+        "industry_name": target_industry,
+        "market": target.get("market"),
+        "total_peers_in_industry": len(peers),
+        "peers": peers[:top_k],
+    }
+
 
 @mcp.tool()
 def fetch_multi_company(corp_codes: list[str], year: int, report_code: str = "11011") -> dict:
@@ -349,6 +548,57 @@ def fetch_multi_company(corp_codes: list[str], year: int, report_code: str = "11
             ]
         }
     """
+    BATCH_SIZE = 10
+    url = f"{BASE_URL}/fnlttMultiAcnt.json"
+
+    all_rows: list[dict] = []
+
+    for i in range(0, len(corp_codes), BATCH_SIZE):
+        batch = corp_codes[i : i + BATCH_SIZE]
+
+        params = {
+            "crtfc_key": API_KEY,
+            "corp_code": ",".join(batch),
+            "bsns_year": str(year),
+            "reprt_code": report_code,
+        }
+
+        r = requests.get(url, params=params, timeout=15)
+        r.raise_for_status()
+        data = r.json()
+
+        status = data.get("status")
+        if status == "013":
+            continue
+        if status != "000":
+            return {
+                "error": f"OpenDART status={status}, message={data.get('message')}",
+                "year": year,
+            }
+        all_rows.extend(data.get("list", []))
+
+    by_corp: dict[str, dict] = {}
+    for raw in all_rows:
+        cc = raw.get("corp_code")
+        if cc is None:
+            continue
+        if cc not in by_corp:
+            by_corp[cc] = {
+                "corp_code": cc,
+                "corp_name": raw.get("corp_name"),
+                "stock_code": raw.get("stock_code"),
+            }
+        account_nm = raw.get("account_nm")
+        if account_nm:
+            by_corp[cc][account_nm] = _parse_amount(raw.get("thstrm_amount"))
+
+    return {
+        "year": year,
+        "report_code": report_code,
+        "companies": list(by_corp.values())
+    }    
+    
+
 
 @mcp.tool()
 def fetch_multi_years(corp_code: str, start_year: int, end_year: int) -> dict:
@@ -379,6 +629,54 @@ def fetch_multi_years(corp_code: str, start_year: int, end_year: int) -> dict:
 
         Use this for trend, volatility, CAGR analysis.
     """
+    if start_year > end_year:
+        return {"error": f"start_year({start_year}) > end_year({end_year})"}
+
+    years = list(range(start_year, end_year + 1))
+
+    KEY_ACCOUNTS = {
+        "매출액", "수익(매출액)", "영업수익", "수익", "영업이익", "당기순이익", "법인세차감전순이익", "자산총계", "부채총계", "자본총계",
+    }
+    
+    by_year: dict[int, dict[str, int | None]] = {}
+    for year in years:
+        fin = fetch_financial(corp_code=corp_code, year=year, report_code="11011")
+        if "error" in fin:
+            by_year[year] = {}
+            continue
+        
+        year_data: dict[str, int | None] = {}
+        for a in fin.get("accounts", []):
+            nm = a.get("account_nm")
+            if nm in KEY_ACCOUNTS:
+                year_data[nm] = a.get("thstrm_amount")
+        by_year[year] = year_data
+
+    all_accounts: set[str] = set()
+    for year_data in by_year.values():
+        all_accounts.update(year_data.keys())
+
+    growth_rates: dict[str, list[float | None]] = {}
+    for acc in all_accounts:
+        rates: list[float | None] = []
+        prev: int | None = None
+        for year in years:
+            current = by_year.get(year, {}).get(acc)
+            if current is None or prev is None or prev == 0:
+                rates.append(None)
+            else:
+                pct = (current - prev) / abs(prev) * 100
+                rates.append(round(pct, 2))
+            prev = current
+        growth_rates[acc] = rates
+
+    return {
+        "corp_code": corp_code,
+        "years": years,
+        "by_year": by_year,
+        "growth_rates": growth_rates,
+    }
+
 
 @mcp.tool()
 def fetch_amendments(corp_code: str, year: int) -> dict:

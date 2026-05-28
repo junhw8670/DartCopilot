@@ -73,7 +73,7 @@ def build_graph(dart_tools: list[BaseTool], kifrs_tools: list[BaseTool],):
 
     amendment_agent = create_agent(
         model=model,
-        tools=_pick(dart_by_name, ["search_company", "fetch_amendments", "diff_documents",]),
+        tools=_pick(dart_by_name, ["search_company", "fetch_amendments", "fetch_amendment_details",]),
         name="amendment_expert",
         system_prompt=(
             "You are a Korean disclosure amendment(정정공시) analysis expert."
@@ -98,6 +98,15 @@ def build_graph(dart_tools: list[BaseTool], kifrs_tools: list[BaseTool],):
         prompt=(
             "You are a supervisor that coordinates multiple expert agents to build a comprehensive graph of a company's business report analysis."
             "Based on the user's request, dispatch tasks to the appropriate experts and integrate their outputs into a single Korean-language answer."
+            "Pick the *minimum* set of agents needed and avoid redundant calls. "
+            "Tool routing guide: "
+            "- Year-over-year trends or growth rates → trend_expert (uses fetch_multi_years, numeric only). "
+            "- Single-year ratios or absolute figures → ratio_expert. "
+            "- Comparing across companies → peer_expert. "
+            "- Narrative summary of a specific report section → business_report_expert. "
+            "- Amendment changes → amendment_expert. "
+            "- K-IFRS standard citations → kifrs_expert. "
+            "Do NOT use business_report_expert (which calls parse_business_report_xml) for numerical trend questions — that returns too much data and causes token overflow. "
         ),
     )
 

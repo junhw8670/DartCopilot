@@ -11,6 +11,7 @@ import xml.etree.ElementTree as ET
 from difflib import SequenceMatcher
 import json
 from bs4 import BeautifulSoup
+import difflib
 
 load_dotenv()
 
@@ -90,14 +91,25 @@ def _parse_amount(s: str | None) -> int | None:
 def _extract_rows(table_elem) -> list[list[str]]:
     """Extract rows from a <TABLE> as [[cell_text, ...], ...]."""
     rows: list[list[str]] = []
-    for tr in table_elem.find_all("TR"):
-        cells = [
-            cell.get_text(separator=" ", strip=True)
-            for cell in tr.find_all(["TD", "TH", "TU", "TE"])
-        ]
-        if any(c for c in cells):
-            rows.append(cells)
+    for section in table_elem.find_all(["THEAD", "TBODY"], recursive=False):
+        for tr in section.find_all("TR", recursive=False):
+            cells = [
+                cell.get_text(separator=" ", strip=True)
+                for cell in tr.find_all(["TD", "TH", "TU", "TE"], recursive=False)
+            ]
+            if any(c for c in cells):
+                rows.append(cells)
     return rows
+
+
+def _read_xml(xml_path: str) -> str:
+    """Read DART XML with utf-8 -> cp 949 fallback."""
+    try:
+        with open(xml_path, encoding="utf-8") as f:
+            return f.read()
+    except UnicodeDecodeError:
+        with open(xml_path, encoding="cp949") as f:
+            return f.read()
 
 
 @mcp.tool()
@@ -159,12 +171,7 @@ def search_company(name: str) -> dict:
 
 
 @mcp.tool()
-def list_disclosures(
-    corp_code: str,
-    bgn_de: str,
-    end_de: str,
-    pblntf_ty: str = "A",
-) -> dict:
+def list_disclosures(corp_code: str, bgn_de: str, end_de: str, pblntf_ty: str = "A") -> dict:
     """List disclosures filed by a specific company within a date range.
 
     Wraps OpenDART /api/list.json endpoint.
@@ -320,8 +327,7 @@ def parse_business_report_xml(xml_path: str, sections: Optional[list[str]] = Non
             ]
         }
     """
-    with open(xml_path, encoding="utf-8") as f:
-        raw = f.read()
+    raw = _read_xml(xml_path)
     
     head = BeautifulSoup(raw[:10000], "lxml-xml")
     company_tag = head.find("COMPANY-NAME")
@@ -354,7 +360,7 @@ def parse_business_report_xml(xml_path: str, sections: Optional[list[str]] = Non
         paragraphs = [
             p.get_text(strip=True)
             for p in soup.find_all("P")
-            if p.get_text(strip=True)
+            if not p.find_parent("TABLE") and p.get_text(strip=True)
         ]
         result_sections[name] = " ".join(paragraphs)
 
@@ -450,13 +456,14 @@ def fetch_financial(corp_code: str, year: int, report_code: str = "11011") -> di
 
 
 @mcp.tool()
-def fetch_peers(corp_code: str, top_k: int = 10) -> dict:
+def fetch_peers(corp_code: str, top_k: int = 10, industry_override: Optional[str] = None) -> dict:
     """Return listed companies sharing the same KRX industry as the target.
 
     Looks up the target's KRX industry classification from a precomputed cache
     (cache/industry_codes.json), then filters for other listed companies with
     the same industry name. The cache is built by scripts/build_industry_cache.py
-    using FinanceDataReader (KRX descriptive listing).
+    using FinanceDataReader (KRX descriptive listing). 
+    If industry_override is provided, search the industry which best matches the industry_override, and then return companies in *that* industry.
 
     Args:
         corp_code: Reference company's 8-digit DART corp_code.
@@ -494,7 +501,7 @@ def fetch_peers(corp_code: str, top_k: int = 10) -> dict:
     if target is None:
         return {"error": f"{corp_code} missing in industry cache." }
 
-    target_industry = target.get("industry")
+    target_industry = industry_override or target.get("industry")
     if not target_industry:
         return {"error": f"{target.get('corp_name')} missing an industry info."}
 
@@ -703,29 +710,90 @@ def fetch_amendments(corp_code: str, year: int) -> dict:
             ]
         }
     """
+    disclosures = list_disclosures(
+        corp_code=corp_code,
+        bgn_de=f"{year -1}0101",
+        end_de=f"{year}1231",
+        pblntf_ty="A",
+    )
+    if "error" in disclosures:
+        return disclosures
+
+    items = disclosures.get("list", [])
+    
+    prefix_pat = re.compile(r'^\[[^\]]+\]\s*')
+
+    amendments = []
+    for amend in items:
+        if not amend.get("is_amendment"):
+            continue
+        if str(amend.get("rcept_dt", ""))[:4] != str(year):
+            continue
+        
+        amend_name = prefix_pat.sub('', amend.get("report_nm", "")).strip()
+
+        original_rcept_no = None
+        for d in items:
+            if d.get("is_amendment"):
+                continue
+            if (d.get("report_nm", "").strip() == amend_name and d.get("rcept_dt", "") <= amend.get("rcept_dt", "")):
+                original_rcept_no = d.get("rcept_no")
+                break
+
+        amendments.append({
+            "rcept_no": amend.get("rcept_no"),
+            "rcept_dt": amend.get("rcept_dt"),
+            "report_nm": amend.get("report_nm"),
+            "original_rcept_no": original_rcept_no,
+            "amendment_reason": None,
+        })
+    
+    return {
+        "corp_code": corp_code,
+        "year":year,
+        "amendments": amendments,
+    }
+
+
 
 @mcp.tool()
-def diff_documents(rcept_no_old: str, rcept_no_new: str) -> dict:
-    """Compare two disclosures (original vs amended) and extract changed sections/paragraphs.
-
-    Internally fetches both via fetch_report, parses with parse_business_report_xml, then runs difflib.unified_diff per section.
+def fetch_amendment_details(rcept_no: str) -> dict:
+    """Extract before/after comparison tables from an amendment disclosure.
+       
     Args:
-        rcept_no_old: Original report receipt number.
-        rcept_no_new: Amended report receipt number.
+        rcept_no: Amendment disclosure's 14-digit receipt number.
 
     Returns:
         {
-            "old_rcept_no": "20240312000736",
-            "new_rcept_no": "20240520001234",
-            "changed_sections": [
-                {
-                    "section": "재무에 관한 사항",
-                    "diff_text": "- 매출액 302조원 \n+ 매출액 301조원\n...",
-                    "change_summary": "매출액 1조원 하향 수정"
-                }
+            "rcept_no": "20240520001234",
+            "comparison_tables": [
+                {"rows": [["항목", "정정전", "정정후"], [...], ...]},
+                ...
             ]
         }
     """
+    report = fetch_report(rcept_no)
+    if "error" in report:
+        return {"error": f"report fetch failed: {report['error']}"}
+
+    raw = _read_xml(report["main_xml"])
+
+    head = raw[:300000]
+    soup = BeautifulSoup(head, "lxml-xml")
+
+    comparison_tables = []
+    for table in soup.find_all("TABLE"):
+        rows = _extract_rows(table)
+        if not rows:
+            continue
+        flat = "".join(c for row in rows for c in row).replace(" ", "")
+        if "정정전" in flat and "정정후" in flat:
+            comparison_tables.append({"rows": rows})
+
+    return {
+        "rcept_no": rcept_no,
+        "comparison_tables": comparison_tables,
+    }
 
 if __name__ == "__main__":
     mcp.run(transport="stdio")

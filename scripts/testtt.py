@@ -2,32 +2,15 @@ import sys
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from mcp_servers.dart_server import (
-    search_company, list_disclosures, fetch_report, parse_business_report_xml
-)
+from mcp_servers.dart_server import fetch_amendment_details
 
-# 캐시에 이미 있는 삼성전자 2023 사업보고서 사용
-samsung = search_company("삼성전자")
-disclosures = list_disclosures(samsung["corp_code"], "20240101", "20241231")
-# 정기공시 중 사업보고서 찾기
-rcept_no = next(d["rcept_no"] for d in disclosures["list"] if "사업보고서" in d["report_nm"])
-report = fetch_report(rcept_no)
+result = fetch_amendment_details("20170511004410")
+print(f"rcept_no: {result['rcept_no']}")
+print(f"비교 표 수: {len(result['comparison_tables'])}")
 
-# "회사의 개요"만 추출해서 본문 앞부분 + 표 개수 확인
-parsed = parse_business_report_xml(
-    xml_path=report["main_xml"],
-    sections=["회사의 개요"],
-)
-print(f"회사: {parsed['company_name']}")
-print(f"보고서: {parsed['report_name']}")
-print(f"기간: {parsed['period_from']} ~ {parsed['period_to']}")
-print()
-for name, text in parsed["sections"].items():
-    print(f"=== {name} ===")
-    print(text[:500], "...")
-    print()
-print(f"표 총 {len(parsed['tables'])}개")
-if parsed["tables"]:
-    print("첫 표의 첫 3행:")
-    for row in parsed["tables"][0]["rows"][:3]:
-        print("  |", " | ".join(row))
+for i, t in enumerate(result["comparison_tables"]):
+    print(f"\n========= 표 {i+1} (행 {len(t['rows'])}개) =========")
+print('-'*70)
+print(t["rows"][1])           # 두 번째 행(첫 데이터 행)의 모든 셀 그대로
+print('-'*70)
+print(t["rows"][1][1])  

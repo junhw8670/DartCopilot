@@ -40,22 +40,23 @@ DartCopilot/
       graph.py           # LangGraph Supervisor
       models.py          # Pydantic State / 데이터 모델
       llm_utils.py       # .env 로드 + LLM 클라이언트 생성
-      pdf_utils.py       # K-IFRS PDF 파싱
-      xml_utils.py       # DART 사업보고서 XML 파싱
-      rag.py             # Chroma 인덱싱 + Rag 질의응답
-      dart_client.py     # OpenDART API 래퍼
     mcp_servers/
         dart_server.py    # FastMCP 기반 DART OpenAPI MCP 서버
         kifrs_server.py   # FastMCP 기반 K-IFRS RAG MCP 서버
     scripts/
+        build_industry_cache.py
         build_kifrs_index.py
+        kifrs_search_test.py
         OpenDART_API_test.py
         OpenDART_document_test.py
     docs/
         devlog/           # 개발일지
     cache/                
         {corp_code}/      # 회사별 DART 다운로드 캐시
-        kifrs/            # K-IFRS PDF(62개)
+        kifrs/            # K-IFRS PDF(63개)
+        kifrs_chroma/     # ChromaDB 임베딩
+        CORPCODE.xml
+        industry_codes.json
     streamlit_app.py      # Streamlit UI
     requirements.txt      
     .env

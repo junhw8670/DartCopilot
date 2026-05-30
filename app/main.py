@@ -62,8 +62,45 @@ async def root():
     return {"status": "ok", "service": "DART Insight Copilot"}
 
 
+def _parse_tool_payload(content) -> dict | None:
+    """Normalize a ToolMessage.content into a dict."""
+    if isinstance(content, dict):
+        return content
+
+    if isinstance(content, str):
+        try:
+            content = json.loads(content)
+        except json.JSONDecodeError:
+            return None
+        
+    if isinstance(content, dict):
+        return content
+
+    if isinstance(content, list):
+        for item in content:
+            if isinstance(item, dict) and "text" in item:
+                try:
+                    inner = json.loads(item["text"])
+                    if isinstance(inner, dict):
+                        return inner
+                except (json.JSONDecodeError, TypeError):
+                    continue
+    return None
+
+
 def _extract_citations(messages) -> list[Citation]:
     """Pull K-IFRS and OpenDART citations from LangGraph tool messages."""
+
+    # print("\n" + "=" * 60)
+    # print(f"[_extract_citations] {len(messages)}개 메시지")
+    # for i, m in enumerate(messages):
+    #     cls = type(m).__name__
+    #     name = getattr(m, "name", None)
+    #     msg_type = getattr(m, "type", None)
+    #     content_preview = str(getattr(m, "content", ""))[:120].replace("\n", " ")
+    #     print(f"  [{i}] class={cls:15} type={msg_type!s:5} name={name!s:25} content={content_preview}")
+    # print("=" * 60)
+
     citations: list[Citation] = []
     seen: set[tuple] = set()
 
@@ -77,9 +114,8 @@ def _extract_citations(messages) -> list[Citation]:
         tool_name = getattr(m, "name", None)
         if not tool_name:
             continue
-        try:
-            payload = json.loads(m.content) if isinstance(m.content, str) else m.content
-        except (json.JSONDecodeError, TypeError):
+        payload = _parse_tool_payload(getattr(m, "content", None))
+        if not payload:
             continue
         
         if tool_name == "search_kifrs":
@@ -167,7 +203,7 @@ async def dart_query(payload: CopilotRequest):
     
     return CopilotResponse(
         answer=final_msg,
-        citations=_extract_citations(messages),  # W4·W5에 K-IFRS agent 결과에서 추출하도록 확장
+        citations=_extract_citations(messages),
         error=None,
     )
 

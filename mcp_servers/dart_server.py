@@ -8,10 +8,9 @@ import os
 from dotenv import load_dotenv
 import re
 import xml.etree.ElementTree as ET
-from difflib import SequenceMatcher
 import json
 from bs4 import BeautifulSoup
-import difflib
+from difflib import SequenceMatcher
 
 load_dotenv()
 
@@ -408,7 +407,7 @@ def fetch_financial(corp_code: str, year: int, report_code: str = "11011") -> di
         - ROE = 당기순이익 / 자기자본총계
         - 영업이익률 = 영업이익 / 매출액
     """
-    url = (f"{BASE_URL}/fnlttSinglAcntAll.json")
+    url = f"{BASE_URL}/fnlttSinglAcntAll.json"
     params ={
         "crtfc_key": API_KEY,
         "corp_code": corp_code,
@@ -532,7 +531,7 @@ def fetch_multi_company(corp_codes: list[str], year: int, report_code: str = "11
     for multiple companies in a single call.
 
     Wraps OpenDART /api/fnlttMultiAcnt.json endpoint, which is optimized for cross-company comparison.
-    This is dramatically more efficient than calling fetch_report N times.
+    This is dramatically more efficient than calling fetch_financial N times.
 
     Args:
         corp_codes: List of corp_codes (up to 10 recommended)

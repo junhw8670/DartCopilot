@@ -1,10 +1,3 @@
-"""K-IFRS RAG MCP server.
-
-Two tools:
-- search_kifrs: hybrid BM25 + dense-vector semantic search over the index
-- get_standard_by_number: exact metadata lookup by standard/paragraph reference
-"""
-
 from __future__ import annotations
 
 from pathlib import Path

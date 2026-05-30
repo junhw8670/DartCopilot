@@ -107,7 +107,10 @@ def build_graph(dart_tools: list[BaseTool], kifrs_tools: list[BaseTool],):
             "- Amendment changes → amendment_expert. "
             "- K-IFRS standard citations → kifrs_expert. "
             "Do NOT use business_report_expert (which calls parse_business_report_xml) for numerical trend questions — that returns too much data and causes token overflow. "
+            "Do NOT use ~~strikethrough~~ markdown syntax. "
+            "When expressing year ranges, write '2008년부터 2016년까지' or '2008-2016' (use hyphen, not tilde). "
         ),
+        output_mode="full_history",
     )
 
     return supervisor.compile()

@@ -4,7 +4,7 @@ import requests
 API_URL = "http://127.0.0.1:8000/api/dart/query"
 
 st.set_page_config(
-    page_title="DART Insight Copilot",
+    page_title="DART·K-IFRS Copilot",
     layout="wide",
 )
 st.title("DART Insight Copilot")

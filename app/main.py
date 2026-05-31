@@ -50,7 +50,7 @@ async def lifespan(app: FastAPI):
         yield
 
 app = FastAPI(
-    title="DART Insight Copilot",
+    title="DART·K-IFRS Copilot",
     description="OpenDART 공시 데이터 + K-IFRS 회계기준을 결합한 multi-agent 분석 시스템",
     lifespan=lifespan,
 )
@@ -59,7 +59,7 @@ app = FastAPI(
 @app.get("/")
 async def root():
     """For Health Check."""
-    return {"status": "ok", "service": "DART Insight Copilot"}
+    return {"status": "ok", "service": "DART·K-IFRS Copilot"}
 
 
 def _parse_tool_payload(content) -> dict | None:

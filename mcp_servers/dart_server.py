@@ -690,7 +690,8 @@ def fetch_amendments(corp_code: str, year: int) -> dict:
 
     Filters disclosures from list_disclosures where is_amendment=true.
     For each amendment, includes a pointer to the original disclosure it amends.
-
+    For the actual before/after content of each amendment, call fetch_amendment_details(rcept_no) separately.
+    
     Args:
         corp_code: Company's corp_code.
         year: Fiscal year.
@@ -704,7 +705,6 @@ def fetch_amendments(corp_code: str, year: int) -> dict:
                     "rcept_dt": "20240312",
                     "report_nm": "[기재정정]사업보고서(2023.12)",
                     "original_rcept_no": "20240215000001",
-                    "amendment_reason": "..."
                 }
             ]
         }
@@ -744,7 +744,6 @@ def fetch_amendments(corp_code: str, year: int) -> dict:
             "rcept_dt": amend.get("rcept_dt"),
             "report_nm": amend.get("report_nm"),
             "original_rcept_no": original_rcept_no,
-            "amendment_reason": None,
         })
     
     return {

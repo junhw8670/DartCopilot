@@ -306,8 +306,7 @@ def parse_business_report_xml(xml_path: str, sections: Optional[list[str]] = Non
 
     Args:
         xml_path: Absolute path to main_xml returned by fetch_report.
-        sections: Section names to extract. If None, extracts all. 
-        Examples: ["회사의 개요", "사업의 내용", "재무에 관한 사항", "임원 및 직원에 관한 사항"]
+        sections: Section names to extract. If None, extracts all. In example, ["회사의 개요", "사업의 내용", "재무에 관한 사항", "임원 및 직원에 관한 사항"]
 
     Returns:
         {

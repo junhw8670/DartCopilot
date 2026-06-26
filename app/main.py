@@ -193,8 +193,7 @@ async def dart_query(payload: CopilotRequest):
         {"role": "user", "content": payload.question}
     ]
     try:
-        result = await app.state.graph.ainvoke({
-            "messages": messages_in})
+        result = await app.state.graph.ainvoke({"messages": messages_in})
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"분석 실패: {e}")
     

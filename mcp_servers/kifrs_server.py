@@ -47,7 +47,7 @@ def _get_hybrid() -> EnsembleRetriever:
             weights=[0.5, 0.5],
         )
     return _hybrid
-
+ 
 @mcp.tool()
 def search_kifrs(query: str, top_k: int = 5) -> dict[str, Any]:
     """Search the K-IFRS corpus by hybrid BM25 + dense vector similarity.

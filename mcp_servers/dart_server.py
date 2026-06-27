@@ -306,7 +306,7 @@ def parse_business_report_xml(xml_path: str, sections: Optional[list[str]] = Non
 
     Args:
         xml_path: Absolute path to main_xml returned by fetch_report.
-        sections: Section names to extract. If None, extracts all. In example, ["회사의 개요", "사업의 내용", "재무에 관한 사항", "임원 및 직원에 관한 사항"]
+        sections: Section names to extract. If None, extracts all. For example, ["회사의 개요", "사업의 내용", "재무에 관한 사항", "임원 및 직원에 관한 사항"]
 
     Returns:
         {
@@ -335,7 +335,7 @@ def parse_business_report_xml(xml_path: str, sections: Optional[list[str]] = Non
 
     title_pat = re.compile(r'<TITLE\b[^>]*>\s*([IVX]+\.\s+[^<]+?)\s*</TITLE>')
     matches = list(title_pat.finditer(raw))
-
+ 
     all_sections: list[tuple[str, str]] = []
     for i, m in enumerate(matches):
         clean_name = re.sub(r'^[IVX]+\.\s+', '', m.group(1).strip())

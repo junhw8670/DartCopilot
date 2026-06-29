@@ -7,7 +7,7 @@ st.set_page_config(
     page_title="DART·K-IFRS Copilot",
     layout="wide",
 )
-st.title("DART Insight Copilot")
+st.title("DART·K-IFRS Copilot")
 st.caption("OpenDART 공시 데이터 + K-IFRS 회계기준을 결합한 multi-agent 분석 시스템")
 
 

@@ -87,6 +87,7 @@ def search_kifrs(query: str, top_k: int = 5) -> dict[str, Any]:
                 "standard": d.metadata.get("standard"),
                 "standard_name": d.metadata.get("standard_name"),
                 "paragraph": d.metadata.get("paragraph"),
+                "section" : d.metadata.get("section"),
                 "text": d.page_content,
                 "source_file": d.metadata.get("source_file"),
             }

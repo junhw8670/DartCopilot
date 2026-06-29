@@ -499,7 +499,13 @@ def fetch_peers(corp_code: str, top_k: int = 10, industry_override: Optional[str
     if target is None:
         return {"error": f"{corp_code} missing in industry cache." }
 
-    target_industry = industry_override or target.get("industry")
+    if industry_override:
+        for i in industry_map.values():
+            if industry_override.replace(" ", "") in i.get("industry", None).replace(" ", ""):
+                target_industry = i.get("industry")
+    else:
+        target_industry = target.get("industry")
+
     if not target_industry:
         return {"error": f"{target.get('corp_name')} missing an industry info."}
 

@@ -3,7 +3,7 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
-import fitz
+import pymupdf4llm
 from dotenv import load_dotenv
 from langchain_chroma import Chroma
 from langchain_core.documents import Document
@@ -29,12 +29,21 @@ splitter = RecursiveCharacterTextSplitter(
 MIN_KOREAN_RATIO = 0.3
 MIN_CHUNK_CHARS = 50
 PAGE_NUMBER_LINE = re.compile(r"^\s*-\s*\d+\s*-\s*$")
+HR_LINE = re.compile(r"^\s*-{3,}\s*$")
+
 PARAGRAPH_PATTERN = re.compile(
     r"^\s*("
-    r"한?\d+(?:\.\d+)?"           # 본문 문단 (1, 23, 한4.1, 한117.1)
-    r"|한?B\d+[A-Z]?(?:\.\d+)?"   # 부록 B 적용지침 (B1, B107, B119A)
+    r"한?\d+(?:\.\d+)*[A-Z]?"
+    r"|한?[A-E]\d+(?:\.\d+)*[A-Z]?"
+    r"|AG\d+(?:\.\d+)*[A-Z]?"
+    r"|IG\d+(?:\.\d+)*[A-Z]?"
+    r"|IE\d+(?:\.\d+)*[A-Z]?"
+    r"|IN\d+"
+    r"|BC[ZEG]?[A-Z]*\d+(?:\.\d+)*[A-Z]?"
+    r"|DO\d+"
     r")(?:\s|$)"
 )
+
 
 NUMBERED_STANDARD = re.compile(r"K-IFRS_제(\d+)호_([^(]+?)(?:_?\(|$)")
 PRACTICE_STATEMENT = re.compile(r"국제회계기준_실무서_(\d+)_([^(]+?)(?:_?\(|$)")
@@ -53,6 +62,13 @@ def _is_mostly_korean(text: str) -> bool:
         return True
     korean = sum(1 for c in text if "\uac00" <= c <= "\ud7af")
     return korean / len(text) >= MIN_KOREAN_RATIO
+
+
+def _section_of(tok: str) -> str:
+    if tok.startswith("IE"): return "적용사례"
+    if tok.startswith(("IG", "AG")): return "실무지침"
+    if tok.startswith("IN"): return "도입"
+    return "부록" if tok.lstrip("한")[:1] in "ABCDE" else "문단"
 
 
 def parse_filename_metadata(filename: str) -> tuple[str, str]:
@@ -80,40 +96,27 @@ def parse_filename_metadata(filename: str) -> tuple[str, str]:
 
 def extract_pdf_text(pdf_path: Path) -> str:
     """Return the concatenated text of all pages in a PDF."""
-    doc = fitz.open(pdf_path)
-    try:
-        return "\n".join(_page_text_excluding_tables(page) for page in doc)
-    finally:
-        doc.close()
-
-
-def _page_text_excluding_tables(page) -> str:
-    """Page text minus any block whose bbox overlaps a detected table."""
-    try:
-        table_bboxes = [t.bbox for t in page.find_tables()]
-    except Exception:
-        table_bboxes = []
-
-    kept = []
-    for x0, y0, x1, y1, text, *_ in page.get_text("blocks"):
-        if not any(_bbox_overlaps((x0, y0, x1, y1), tbb) for tbb in table_bboxes):
-            kept.append(text)
-    return "".join(kept)
-
-
-def _bbox_overlaps(a, b) -> bool:
-    """True if two (x0, y0, x1, y1) rectangles intersect."""
-    return not (a[2] < b[0] or a[0] > b[2] or a[3] < b[1] or a[1] > b[3])
+    md = pymupdf4llm.to_markdown(str(pdf_path))
+    md = re.sub(r"<!-- Start of picture text -->.*?<!-- End of picture text -->",
+                "", md, flags=re.DOTALL)
+    return md
 
 
 def parse_paragraph_chunks(text, standard, standard_name, source_file):
     docs = []
     current_para = None
+    current_section = None
     current_text = []
     
-    for line in text.split("\n"):
-        if PAGE_NUMBER_LINE.match(line):
+    for raw in text.split("\n"):
+        if PAGE_NUMBER_LINE.match(raw):
             continue
+        if HR_LINE.match(raw):
+            continue
+        line = re.sub(r"[*_]+", "", raw)
+        line = re.sub(r"^\s*(?:[-*>]+\s+|#+\s+)", "", line)
+        line = re.sub(r"</?sup>", "", line)
+
         m = PARAGRAPH_PATTERN.match(line)
         if m:
             if current_para and current_text:
@@ -123,10 +126,16 @@ def parse_paragraph_chunks(text, standard, standard_name, source_file):
                         "standard": standard,
                         "standard_name": standard_name,
                         "paragraph": current_para,
+                        "section": current_section,
                         "source_file": source_file,
                     }
                 ))
+            if m.group(1).startswith(("BC", "DO")):
+                current_para = None
+                current_text = []
+                continue
             current_para = m.group(1)
+            current_section = _section_of(m.group(1))
             current_text = [line[m.end():].strip()]
         else:
             current_text.append(line.strip())
@@ -138,6 +147,7 @@ def parse_paragraph_chunks(text, standard, standard_name, source_file):
                 "standard": standard,
                 "standard_name": standard_name,
                 "paragraph": current_para,
+                "section": current_section,
                 "source_file": source_file,
             }
         ))
@@ -156,7 +166,7 @@ def parse_paragraph_chunks(text, standard, standard_name, source_file):
 
     final_docs = [
         d for d in final_docs
-        if len(d.page_content) >= MIN_CHUNK_CHARS and _is_mostly_korean(d.page_content)
+        if len(d.page_content) >= MIN_CHUNK_CHARS and _is_mostly_korean(d.page_content) and d.page_content.count("<br>") < 5
     ]
     return final_docs
 

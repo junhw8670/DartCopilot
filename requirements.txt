@@ -19,3 +19,4 @@ pandas
 streamlit
 beautifulsoup4
 lxml
+pymupdf4llm

@@ -14,6 +14,7 @@ class Citation(BaseModel):
     label: str
     standard: Optional[str] = None
     standard_name: Optional[str] = None
+    section: Optional[str] = None
     paragraph: Optional[str] = None
     source_file: Optional[str] = None
     rcept_no: Optional[str] = None

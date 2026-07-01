@@ -49,7 +49,7 @@ def _get_hybrid() -> EnsembleRetriever:
     return _hybrid
  
 @mcp.tool()
-def search_kifrs(query: str, top_k: int = 5) -> dict[str, Any]:
+def search_kifrs(query: str, top_k: int = 8) -> dict[str, Any]:
     """Search the K-IFRS corpus by hybrid BM25 + dense vector similarity.
 
     Runs both keyword (BM25) and semantic (cosine) search over the indexed
@@ -60,7 +60,7 @@ def search_kifrs(query: str, top_k: int = 5) -> dict[str, Any]:
     Args:
         query: Natural-language Korean query
             (e.g., "수익 인식 시점", "리스 회계처리 방법", "금융자산 손상").
-        top_k: Number of fused results to return. Default 5.
+        top_k: Number of fused results to return. Default 8.
 
     Returns:
         {

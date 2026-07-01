@@ -119,22 +119,7 @@ def _extract_citations(messages) -> list[Citation]:
             continue
         
         if tool_name == "search_kifrs":
-            for r in payload.get("results", []):
-                std = r.get("standard")
-                sect = r.get("section")
-                para = r.get("paragraph")
-                _add(
-                    ("kifrs", std, sect, para),
-                    Citation(
-                        source="K-IFRS",
-                        label=f"{std or ''} {sect} {para or ''}".strip(),
-                        standard=std,
-                        standard_name=r.get("standard_name"),
-                        section=sect,
-                        paragraph=para,
-                        source_file=r.get("source_file"),
-                    ),
-                )
+            continue
         elif tool_name in {"list_disclosures", "fetch_amendments"}:
             items = payload.get("list") or payload.get("amendments") or []
             for d in items:

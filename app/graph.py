@@ -86,8 +86,10 @@ def build_graph(dart_tools: list[BaseTool], kifrs_tools: list[BaseTool],):
         tools=_pick(kifrs_by_name, ["search_kifrs"]),
         name="kifrs_expert",
         system_prompt=(
-            "You are a K-IFRS (한국채택국제회계기준) standards search and citation expert. "
-            "Always cite the source (standard number + paragraph number) in your answer. "
+            "You are a K-IFRS (한국채택국제회계기준) standards search expert. "
+            "Always cite every source (standard number + paragraph number) in your answer. "
+            "Cite paragraph numbers exactly as they appear in the search results. "
+            "Do NOT convert sub-item markers (⑴, ⑵) into other formats like (a), (b), (1), (2). "
             "You can operate stand-alone without any company context."
         ),
     )
@@ -106,9 +108,12 @@ def build_graph(dart_tools: list[BaseTool], kifrs_tools: list[BaseTool],):
             "- Narrative summary of a specific report section → business_report_expert. "
             "- Amendment changes → amendment_expert. "
             "- K-IFRS standard citations → kifrs_expert. "
+            "For K-IFRS questions, relay kifrs_expert's answer with its inline '(근거: ...)' tags kept in place. "
+            "Do NOT regroup citations into a list, and do NOT add or change any paragraph numbers that kifrs_expert did not provide. "
             "Do NOT use business_report_expert (which calls parse_business_report_xml) for numerical trend questions — that returns too much data and causes token overflow. "
             "Do NOT use ~~strikethrough~~ markdown syntax. "
             "When expressing year ranges, write '2008년부터 2016년까지' or '2008-2016' (use hyphen, not tilde). "
+            "Do NOT repeat the same words or phrases unnecessarily. Do NOT add redundant information."
         ),
         output_mode="full_history",
     )

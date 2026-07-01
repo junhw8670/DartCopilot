@@ -86,18 +86,19 @@ def _parse_amount(s: str | None) -> int | None:
     except ValueError:
         return None
 
+_TR_RE = re.compile(r"^tr$", re.I)
+_CELL_RE = re.compile(r"^(?:td|th|tu|te)$", re.I)
 
 def _extract_rows(table_elem) -> list[list[str]]:
     """Extract rows from a <TABLE> as [[cell_text, ...], ...]."""
     rows: list[list[str]] = []
-    for section in table_elem.find_all(["THEAD", "TBODY"], recursive=False):
-        for tr in section.find_all("TR", recursive=False):
-            cells = [
-                cell.get_text(separator=" ", strip=True)
-                for cell in tr.find_all(["TD", "TH", "TU", "TE"], recursive=False)
-            ]
-            if any(c for c in cells):
-                rows.append(cells)
+    for tr in table_elem.find_all(_TR_RE):
+        cells = [
+            cell.get_text(separator=" ", strip=True)
+            for cell in tr.find_all(_CELL_RE)
+        ]
+        if any(c for c in cells):
+            rows.append(cells)
     return rows
 
 
@@ -170,7 +171,7 @@ def search_company(name: str) -> dict:
 
 
 @mcp.tool()
-def list_disclosures(corp_code: str, bgn_de: str, end_de: str, pblntf_ty: str = "A") -> dict:
+def list_disclosures(corp_code: str, bgn_de: str, end_de: str, pblntf_ty: str | None = None) -> dict:
     """List disclosures filed by a specific company within a date range.
 
     Wraps OpenDART /api/list.json endpoint.
@@ -180,7 +181,7 @@ def list_disclosures(corp_code: str, bgn_de: str, end_de: str, pblntf_ty: str = 
         bgn_de: Start date YYYYMMDD (e.g. "20230101")
         end_de: End date YYYYMMDD (e.g. "20231231")
         pblntf_ty: Disclosure type. 'A'=periodic (사업보고서, 반기보고서, 분기보고서),
-        'B'=major matters, 'C'=issuance, 'D'=equity, 'E'=other. Default 'A'.
+        'B'=major matters, 'C'=issuance, 'D'=equity, 'E'=other. Default None.
 
     Returns:
         {
@@ -204,28 +205,26 @@ def list_disclosures(corp_code: str, bgn_de: str, end_de: str, pblntf_ty: str = 
         "corp_code": corp_code,
         "bgn_de": bgn_de,
         "end_de": end_de,
-        "pblntf_ty": pblntf_ty,
         "page_count": "100",
     }
-    
-    r = requests.get(url, params=params, timeout=15)
-    r.raise_for_status()
-    data = r.json()
+    if pblntf_ty:
+        params["pblntf_ty"] = pblntf_ty
 
-    status = data.get("status")
-    if status == "013":
-        return {"status": "013", "total_count": 0, "list": []}
-    if status != "000":
-        return {
-            "error": f"OpenDART status={status}, message={data.get('message')}"
-        }
-    
-    items = []
-    for raw in data.get("list", []):
-        report_nm = (raw.get("report_nm") or "").strip()
-        is_amendment = (
-            report_nm.startswith("[") and "정정" in report_nm.split("]")[0]
-        )
+    items, page_no = [], 1
+    while True:
+        r = requests.get(url, params={**params, "page_no": str(page_no)}, timeout=15)
+        r.raise_for_status()
+        data = r.json()
+        status = data.get("status")
+        if status == "013":
+            break
+        if status != "000":
+            if page_no == 1:
+                return {"error": f"OpenDART status={status}, message={data.get('message')}"}
+            break
+        for raw in data.get("list", []):
+            report_nm = (raw.get("report_nm") or "").strip()
+            is_amendment = (report_nm.startswith("[") and "정정" in report_nm.split("]")[0])
 
         items.append({
             "rcept_no": raw.get("rcept_no"),
@@ -234,7 +233,10 @@ def list_disclosures(corp_code: str, bgn_de: str, end_de: str, pblntf_ty: str = 
             "corp_name": raw.get("corp_name"),
             "is_amendment": is_amendment,
         })
-    
+        if page_no >= data.get("total_page", 1):
+            break
+        page_no += 1
+        
     return {
         "status": status,
         "total_count": data.get("total_count", len(items)),
@@ -690,7 +692,7 @@ def fetch_multi_years(corp_code: str, start_year: int, end_year: int) -> dict:
 
 
 @mcp.tool()
-def fetch_amendments(corp_code: str, year: int) -> dict:
+def fetch_amendments(corp_code: str, year: int, pblntf_ty: str | None = None) -> dict:
     """Fetch a company's amendment disclosures (정정공시) for a given year.
 
     Filters disclosures from list_disclosures where is_amendment=true.
@@ -700,6 +702,7 @@ def fetch_amendments(corp_code: str, year: int) -> dict:
     Args:
         corp_code: Company's corp_code.
         year: Fiscal year.
+        pblntf_ty: Publication type filter. If None, no filter is applied.
 
     Returns:
         {
@@ -718,7 +721,7 @@ def fetch_amendments(corp_code: str, year: int) -> dict:
         corp_code=corp_code,
         bgn_de=f"{year -1}0101",
         end_de=f"{year}1231",
-        pblntf_ty="A",
+        pblntf_ty=pblntf_ty,
     )
     if "error" in disclosures:
         return disclosures
@@ -753,7 +756,7 @@ def fetch_amendments(corp_code: str, year: int) -> dict:
     
     return {
         "corp_code": corp_code,
-        "year":year,
+        "year": year,
         "amendments": amendments,
     }
 
@@ -782,15 +785,15 @@ def fetch_amendment_details(rcept_no: str) -> dict:
     raw = _read_xml(report["main_xml"])
 
     head = raw[:300000]
-    soup = BeautifulSoup(head, "lxml-xml")
+    soup = BeautifulSoup(head, "html.parser")
 
     comparison_tables = []
-    for table in soup.find_all("TABLE"):
+    for table in soup.find_all(re.compile(r"^table$", re.I)):
         rows = _extract_rows(table)
         if not rows:
             continue
         flat = "".join(c for row in rows for c in row).replace(" ", "")
-        if "정정전" in flat and "정정후" in flat:
+        if "정정전" in flat and "정정후" in flat or "변경전" in flat and "변경후" in flat:
             comparison_tables.append({"rows": rows})
 
     return {

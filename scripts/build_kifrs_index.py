@@ -3,7 +3,7 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
-import pymupdf4llm
+import fitz
 from dotenv import load_dotenv
 from langchain_chroma import Chroma
 from langchain_core.documents import Document
@@ -41,6 +41,7 @@ PARAGRAPH_PATTERN = re.compile(
     r"|IN\d+"
     r"|BC[ZEG]?[A-Z]*\d+(?:\.\d+)*[A-Z]?"
     r"|DO\d+"
+    r"|(?:부록\s*[A-Z]\.?\s*)?용어의\s*정의"
     r")(?:\s|$)"
 )
 
@@ -65,9 +66,8 @@ def _is_mostly_korean(text: str) -> bool:
 
 
 def _section_of(tok: str) -> str:
-    if tok.startswith("IE"): return "적용사례"
     if tok.startswith(("IG", "AG")): return "실무지침"
-    if tok.startswith("IN"): return "도입"
+    if "용어의 정의" in tok: return "정의"
     return "부록" if tok.lstrip("한")[:1] in "ABCDE" else "문단"
 
 
@@ -96,10 +96,11 @@ def parse_filename_metadata(filename: str) -> tuple[str, str]:
 
 def extract_pdf_text(pdf_path: Path) -> str:
     """Return the concatenated text of all pages in a PDF."""
-    md = pymupdf4llm.to_markdown(str(pdf_path))
-    md = re.sub(r"<!-- Start of picture text -->.*?<!-- End of picture text -->",
-                "", md, flags=re.DOTALL)
-    return md
+    doc = fitz.open(pdf_path)
+    try:
+        return "\n".join(page.get_text("text") for page in doc)
+    finally:
+        doc.close()
 
 
 def parse_paragraph_chunks(text, standard, standard_name, source_file):
@@ -108,14 +109,11 @@ def parse_paragraph_chunks(text, standard, standard_name, source_file):
     current_section = None
     current_text = []
     
-    for raw in text.split("\n"):
-        if PAGE_NUMBER_LINE.match(raw):
+    for line in text.split("\n"):
+        if PAGE_NUMBER_LINE.match(line):
             continue
-        if HR_LINE.match(raw):
+        if HR_LINE.match(line):
             continue
-        line = re.sub(r"[*_]+", "", raw)
-        line = re.sub(r"^\s*(?:[-*>]+\s+|#+\s+)", "", line)
-        line = re.sub(r"</?sup>", "", line)
 
         m = PARAGRAPH_PATTERN.match(line)
         if m:
@@ -130,7 +128,7 @@ def parse_paragraph_chunks(text, standard, standard_name, source_file):
                         "source_file": source_file,
                     }
                 ))
-            if m.group(1).startswith(("BC", "DO")):
+            if m.group(1).startswith(("BC", "DO", "IE", "IN")):
                 current_para = None
                 current_text = []
                 continue
@@ -166,7 +164,7 @@ def parse_paragraph_chunks(text, standard, standard_name, source_file):
 
     final_docs = [
         d for d in final_docs
-        if len(d.page_content) >= MIN_CHUNK_CHARS and _is_mostly_korean(d.page_content) and d.page_content.count("<br>") < 5
+        if len(d.page_content) >= MIN_CHUNK_CHARS and _is_mostly_korean(d.page_content)
     ]
     return final_docs
 

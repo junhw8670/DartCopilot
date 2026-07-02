@@ -225,18 +225,17 @@ def list_disclosures(corp_code: str, bgn_de: str, end_de: str, pblntf_ty: str | 
         for raw in data.get("list", []):
             report_nm = (raw.get("report_nm") or "").strip()
             is_amendment = (report_nm.startswith("[") and "정정" in report_nm.split("]")[0])
-
-        items.append({
-            "rcept_no": raw.get("rcept_no"),
-            "rcept_dt": raw.get("rcept_dt"),
-            "report_nm": report_nm,
-            "corp_name": raw.get("corp_name"),
-            "is_amendment": is_amendment,
-        })
+            items.append({
+                "rcept_no": raw.get("rcept_no"),
+                "rcept_dt": raw.get("rcept_dt"),
+                "report_nm": report_nm,
+                "corp_name": raw.get("corp_name"),
+                "is_amendment": is_amendment,
+            })
         if page_no >= data.get("total_page", 1):
             break
         page_no += 1
-        
+
     return {
         "status": status,
         "total_count": data.get("total_count", len(items)),
@@ -364,10 +363,10 @@ def parse_business_report_xml(xml_path: str, sections: Optional[list[str]] = Non
         ]
         result_sections[name] = " ".join(paragraphs)
 
-        for table in soup.find_all("TABLE"):
-            rows = _extract_rows(table)
-            if rows:
-                result_tables.append({"section": name, "rows": rows})
+        # for table in soup.find_all("TABLE"):
+        #     rows = _extract_rows(table)
+        #     if rows:
+        #         result_tables.append({"section": name, "rows": rows})
 
     return {
         "company_name": company_tag.get_text(strip=True) if company_tag else "",
@@ -375,7 +374,7 @@ def parse_business_report_xml(xml_path: str, sections: Optional[list[str]] = Non
         "period_from": pf_tag.get("AUNITVALUE", "") if pf_tag else "",
         "period_to": pt_tag.get("AUNITVALUE", "") if pt_tag else "",
         "sections": result_sections,
-        "tables": result_tables,
+        "tables": [],
     }
 
 
@@ -612,7 +611,6 @@ def fetch_multi_company(corp_codes: list[str], year: int, report_code: str = "11
     }    
     
 
-
 @mcp.tool()
 def fetch_multi_years(corp_code: str, start_year: int, end_year: int) -> dict:
     """Fetch a single company's financial statements across multiple years.
@@ -647,10 +645,15 @@ def fetch_multi_years(corp_code: str, start_year: int, end_year: int) -> dict:
 
     years = list(range(start_year, end_year + 1))
 
-    KEY_ACCOUNTS = {
-        "매출액", "수익(매출액)", "영업수익", "수익", "영업이익", "당기순이익", "법인세차감전순이익", "자산총계", "부채총계", "자본총계",
-    }
-    
+    INCOME_ACCOUNTS = {"매출액", "영업수익", "수익", "영업이익", "당기순이익", "법인세차감전순이익"}
+    BALANCE_ACCOUNTS = {"자산총계", "부채총계", "자본총계"}
+    KEY_ACCOUNTS = INCOME_ACCOUNTS | BALANCE_ACCOUNTS
+
+    INCOME_SJ = {"손익계산서", "포괄손익계산서"}
+
+    def _norm(nm):
+        return re.sub(r"\s*\(.*?\)", "", nm).strip() if nm else ""
+
     by_year: dict[int, dict[str, int | None]] = {}
     for year in years:
         fin = fetch_financial(corp_code=corp_code, year=year, report_code="11011")
@@ -660,8 +663,12 @@ def fetch_multi_years(corp_code: str, start_year: int, end_year: int) -> dict:
         
         year_data: dict[str, int | None] = {}
         for a in fin.get("accounts", []):
-            nm = a.get("account_nm")
-            if nm in KEY_ACCOUNTS:
+            nm = _norm(a.get("account_nm"))
+            if nm not in KEY_ACCOUNTS:
+                continue
+            if nm in INCOME_ACCOUNTS and a.get("sj_nm") not in INCOME_SJ:
+                continue
+            if nm not in year_data:
                 year_data[nm] = a.get("thstrm_amount")
         by_year[year] = year_data
 
@@ -795,10 +802,17 @@ def fetch_amendment_details(rcept_no: str) -> dict:
         flat = "".join(c for row in rows for c in row).replace(" ", "")
         if "정정전" in flat and "정정후" in flat or "변경전" in flat and "변경후" in flat:
             comparison_tables.append({"rows": rows})
+    notes = []
+    for tag in soup.find_all(re.compile(r"^(?:p|span|td)$", re.I)):
+        t = tag.get_text(" ", strip=True)
+        if "정정전" in t or "정정후" in t or "변경전" in t or "변경후" in t:
+            notes.append(t)
+    notes = list(dict.fromkeys(notes))
 
     return {
         "rcept_no": rcept_no,
         "comparison_tables": comparison_tables,
+        "notes": notes,
     }
 
 if __name__ == "__main__":

@@ -38,6 +38,8 @@ def build_graph(dart_tools: list[BaseTool], kifrs_tools: list[BaseTool],):
         system_prompt=(
             "You are a Korean business report (사업보고서) summarization expert."
             "Use the tools to fetch and parse the XML report, then summarize sections."
+            "'N년 사업보고서' means the report whose report_nm contains '사업보고서' and '(N.12)'. "
+            "Search a range covering N and N+1, select that report, and EXCLUDE 반기보고서/분기보고서. "
         ),
     )
 

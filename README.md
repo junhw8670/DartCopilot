@@ -61,3 +61,25 @@ DartCopilot/
     requirements.txt      
     .env
 ```
+
+---
+
+### 동기
+일반적인 생성형 AI를 전문적인 업무에 활용하기 위해서 환각을 해결하고 답변이 검증가능하게 만들어야 한다고 판단. 회계·재무 업무 수행 시 필요한 정보를 빠르게 검색할 수 있는 챗봇을 제작하고자 함.
+
+---
+
+### 최종 산출물 (예시)
+<img src='results/1.png' width='800'>
+<img src='results/2.png' width='800'>
+<img src='results/3.png' width='800'>
+<img src='results/4.png' width='800'>
+<img src='results/5.png' width='800'>
+<img src='results/6.png' width='800'>
+<img src='results/7.png' width='800'>
+<img src='results/8.png' width='800'>
+<img src='results/9.png' width='800'>
+<img src='results/10.png' width='800'>
+<img src='results/11.png' width='800'>
+<img src='results/12.png' width='800'>
+<img src='results/13.png' width='800'>

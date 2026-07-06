@@ -70,20 +70,24 @@ DartCopilot/
 ---
 
 ### 최종 산출물 (예시)
-<img src='results/1.png' width='800'>
-<img src='results/2.png' width='800'>
-<img src='results/3.png' width='800'>
-<img src='results/4.png' width='800'>
-<img src='results/5.png' width='800'>
-<img src='results/6.png' width='800'>
-<img src='results/7.png' width='800'>  
+#### 1) 동종업종 비교
+<img src='results/1.png' width='1000'>
+<img src='results/2.png' width='1000'>
+<img src='results/3.png' width='1000'>
+<img src='results/4.png' width='1000'>
+<img src='results/5.png' width='1000'>
+<img src='results/6.png' width='1000'>
+<img src='results/7.png' width='1000'>  
 
-<img src='results/8.png' width='800'>
-<img src='results/9.png' width='800'>
-<img src='results/10.png' width='800'>  
+#### 2) 기준서 인용
+<img src='results/8.png' width='1000'>
+<img src='results/9.png' width='1000'>
+<img src='results/10.png' width='1000'>  
+<br>
+<img src='results/11.png' width='1000'>  
 
-<img src='results/11.png' width='800'>  
+#### 3) 다년간 성장률
+<img src='results/12.png' width='1000'>  
 
-<img src='results/12.png' width='800'>  
-
-<img src='results/13.png' width='800'>
+#### 4) 사업보고서 요약
+<img src='results/13.png' width='1000'>

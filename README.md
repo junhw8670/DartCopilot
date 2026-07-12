@@ -38,10 +38,6 @@ OpenDART 공시·재무제표 데이터와 K-IFRS 회계기준서를 결합하�
 ### 프로젝트 구조
 ```text
 DartCopilot/
-    .agents/
-        plugins/
-            marketplace.json
-            
     plugins/
         dart-copilot/
             codex-plugin/
@@ -49,8 +45,6 @@ DartCopilot/
             skills/
                 dart-kifrs-analysis/
                     SKILL.md
-                    agents/
-                        openai.yaml
             .mcp.json
     app/
       main.py            # FastAPI 엔트리포인트, /api/dart/query 라우트

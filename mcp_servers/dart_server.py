@@ -12,13 +12,21 @@ import json
 from bs4 import BeautifulSoup
 from difflib import SequenceMatcher
 
-load_dotenv()
+BASE_DIR = Path(__file__).resolve().parent.parent
+
+load_dotenv(BASE_DIR / ".env")
 
 mcp = FastMCP("DartOpenAPI")
 
 API_KEY = os.getenv("OPENDART_API_KEY")
 BASE_URL = "https://opendart.fss.or.kr/api"
-CACHE_DIR = Path(__file__).resolve().parent.parent / "cache"
+
+CACHE_DIR = Path(
+    os.getenv(
+        "DARTCOPILOT_CACHE_DIR",
+        str(BASE_DIR / "cache"),
+    )
+).resolve()
 
 _companies: list[dict] | None = None
 

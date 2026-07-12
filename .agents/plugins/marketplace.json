@@ -1,0 +1,20 @@
+{
+  "name": "dartcopilot-local",
+  "interface": {
+    "displayName": "DartCopilot Local"
+  },
+  "plugins": [
+    {
+      "name": "dart-copilot",
+      "source": {
+        "source": "local",
+        "path": "./plugins/dart-copilot"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Productivity"
+    }
+  ]
+}

@@ -1,0 +1,27 @@
+Metadata-Version: 2.4
+Name: dartcopilot
+Version: 0.2.0
+Summary: OpenDART and K-IFRS MCP tools for accounting analysis
+Requires-Python: >=3.11
+Requires-Dist: requests>=2.31.0
+Requires-Dist: langgraph-supervisor
+Requires-Dist: langchain
+Requires-Dist: langchain-openai
+Requires-Dist: langgraph
+Requires-Dist: python-dotenv
+Requires-Dist: PyMuPDF
+Requires-Dist: langchain-chroma
+Requires-Dist: langchain-text-splitters
+Requires-Dist: chromadb
+Requires-Dist: langchain-community
+Requires-Dist: rank_bm25
+Requires-Dist: mcp
+Requires-Dist: langchain-mcp-adapters
+Requires-Dist: FastAPI
+Requires-Dist: langchain-classic
+Requires-Dist: finance-datareader
+Requires-Dist: pandas
+Requires-Dist: streamlit
+Requires-Dist: beautifulsoup4
+Requires-Dist: lxml
+Requires-Dist: pymupdf4llm

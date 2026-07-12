@@ -1,0 +1,10 @@
+interface:
+  display_name: "DART·K-IFRS 분석"
+  short_description: "공시·재무제표와 회계기준 원문을 함께 검토합니다."
+  brand_color: "#D04A02"
+  default_prompt: >
+    DART 공시와 K-IFRS 기준서를 사용하여
+    회사의 재무정보와 회계처리를 근거와 함께 분석해 주세요.
+
+policy:
+  allow_implicit_invocation: true

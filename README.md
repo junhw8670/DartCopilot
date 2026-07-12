@@ -1,5 +1,5 @@
 # DART·K-IFRS Copilot
-OpenDART 공시 데이터(사업보고서 XML + 재무제표 JSON)와 K-IFRS 회계기준서를 결합해, 사용자의 자연어 질문을 멀티 에이전트가 자동으로 분석·답변합니다.
+OpenDART 공시·재무제표 데이터와 K-IFRS 회계기준서를 결합하여, 사용자의 자연어 질문을 분석하고 근거가 포함된 답변을 제공하는 회계·재무 특화 AI 시스템입니다.
 
 ---
 
@@ -91,3 +91,6 @@ DartCopilot/
 
 #### 4) 사업보고서 요약
 <img src='results/13.png' width='1000'>
+
+#### Codex Plugin
+<img src='results/codex_plugin_ex.png' width='1000'>

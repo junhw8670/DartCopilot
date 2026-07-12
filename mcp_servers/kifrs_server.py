@@ -11,12 +11,21 @@ from langchain_core.documents import Document
 from langchain_openai import OpenAIEmbeddings
 from mcp.server.fastmcp import FastMCP
 
-load_dotenv()
+import os
+
+BASE_DIR = Path(__file__).resolve().parent.parent
+
+load_dotenv(BASE_DIR / ".env")
 
 mcp = FastMCP("KifrsRAG")
 
-BASE_DIR = Path(__file__).resolve().parent.parent
-VECTOR_DIR = BASE_DIR / "cache" / "kifrs_chroma"
+VECTOR_DIR = Path(
+    os.getenv(
+        "KIFRS_VECTOR_DIR",
+        str(BASE_DIR / "cache" / "kifrs_chroma"),
+    )
+).resolve()
+
 COLLECTION_NAME = "kifrs"
 EMBEDDING_MODEL = "text-embedding-3-large"
 

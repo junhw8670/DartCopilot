@@ -1,0 +1,16 @@
+{
+  "dart": {
+    "command": "python",
+    "args": [
+      "-m",
+      "mcp_servers.dart_server"
+    ]
+  },
+  "kifrs": {
+    "command": "python",
+    "args": [
+      "-m",
+      "mcp_servers.kifrs_server"
+    ]
+  }
+}

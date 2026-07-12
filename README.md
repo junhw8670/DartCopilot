@@ -29,12 +29,29 @@ OpenDART 공시·재무제표 데이터와 K-IFRS 회계기준서를 결합하�
 - 데이터 소스: 
     - [OpenDART](https://opendart.fss.or.kr)
     - [한국회계기준원](https://www.kasb.or.kr) — K-IFRS 기준서 PDF (사전 임베딩)
-
+- Agent / Tool Integration
+    - MCP
+    - Codex Plugin
+    - Codex Skill (`SKILL.md`)
 ---
 
 ### 프로젝트 구조
 ```text
 DartCopilot/
+    .agents/
+        plugins/
+            marketplace.json
+            
+    plugins/
+        dart-copilot/
+            codex-plugin/
+                plugin.json
+            skills/
+                dart-kifrs-analysis/
+                    SKILL.md
+                    agents/
+                        openai.yaml
+            .mcp.json
     app/
       main.py            # FastAPI 엔트리포인트, /api/dart/query 라우트
       graph.py           # LangGraph Supervisor
@@ -65,7 +82,7 @@ DartCopilot/
 ---
 
 ### 동기
-일반적인 생성형 AI를 전문적인 업무에 활용하기 위해서 환각을 해결하고 답변이 검증가능하게 만들어야 한다고 판단. 회계·재무 업무 수행 시 필요한 정보를 빠르게 검색할 수 있는 챗봇을 제작하고자 함.
+일반적인 생성형 AI를 전문적인 업무에 활용하기 위해서 환각을 해결하고 답변이 검증가능하게 만들어야 한다고 판단. 회계·재무 업무 수행 시 필요한 정보를 빠르게 검색할 수 있는 기능을 구현하고자 함.
 
 ---
 

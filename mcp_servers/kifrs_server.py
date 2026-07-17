@@ -5,9 +5,6 @@ from typing import Any, Optional
 
 from dotenv import load_dotenv 
 from langchain_chroma import Chroma
-from langchain_classic.retrievers import EnsembleRetriever
-from langchain_community.retrievers import BM25Retriever
-from langchain_core.documents import Document
 from langchain_openai import OpenAIEmbeddings
 from mcp.server.fastmcp import FastMCP
 
@@ -30,6 +27,7 @@ COLLECTION_NAME = "kifrs"
 EMBEDDING_MODEL = "text-embedding-3-large"
 
 embeddings = OpenAIEmbeddings(model=EMBEDDING_MODEL)
+
 vectorstore = Chroma(
     collection_name=COLLECTION_NAME,
     embedding_function=embeddings,
@@ -37,39 +35,17 @@ vectorstore = Chroma(
 )
 
 
-_hybrid: EnsembleRetriever | None = None
-
-def _get_hybrid() -> EnsembleRetriever:
-    """Lazy build/cache BM25 + dense vector hybrid retriever.""" 
-    global _hybrid
-    if _hybrid is None:
-        raw = vectorstore.get()
-        docs = [
-            Document(page_content=raw["documents"][i], metadata=raw["metadatas"][i])
-            for i in range(len(raw["documents"]))
-        ]
-        bm25 = BM25Retriever.from_documents(docs)
-        bm25.k = 10
-
-        _hybrid = EnsembleRetriever(
-            retrievers=[bm25, vectorstore.as_retriever(search_kwargs={"k": 10})],
-            weights=[0.5, 0.5],
-        )
-    return _hybrid
- 
 @mcp.tool()
 def search_kifrs(query: str, top_k: int = 8) -> dict[str, Any]:
-    """Search the K-IFRS corpus by hybrid BM25 + dense vector similarity.
+    """Search the K-IFRS corpus using dense vector similarity.
 
-    Runs both keyword (BM25) and semantic (cosine) search over the indexed
-    standards via LangChain's EnsembleRetriever, which internally fuses the
-    rankings with Reciprocal Rank Fusion. Each result includes the standard
-    number, paragraph number, body text, and source PDF for citation.
+    Runs semantic search over the indexed K-IFRS standards.
+    Each result includes the standard number, paragraph number, body text, and source PDF for citation.
 
     Args:
         query: Natural-language Korean query
             (e.g., "수익 인식 시점", "리스 회계처리 방법", "금융자산 손상").
-        top_k: Number of fused results to return. Default 8.
+        top_k: Number of vector search results to return. Default 8.
 
     Returns:
         {
@@ -88,7 +64,10 @@ def search_kifrs(query: str, top_k: int = 8) -> dict[str, Any]:
 
         ALWAYS cite (standard, paragraph) in the final answer.
     """
-    hits = _get_hybrid().invoke(query)[:top_k]
+    hits = vectorstore.similarity_search(
+        query=query,
+        k=top_k,
+    )
     return {
         "query": query,
         "results": [

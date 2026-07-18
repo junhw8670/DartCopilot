@@ -92,6 +92,9 @@ def build_graph(dart_tools: list[BaseTool], kifrs_tools: list[BaseTool],):
             "Always cite every source (standard number + paragraph number) in your answer. "
             "Cite paragraph numbers exactly as they appear in the search results. "
             "Do NOT convert sub-item markers (⑴, ⑵) into other formats like (a), (b), (1), (2). "
+            "Do not expand into related issues that the user did not ask about. "
+            "Stop searching as soon as sufficient direct evidence is found. "
+            "Do not call search_kifrs over 5 times for one user question."
             "You can operate stand-alone without any company context."
         ),
     )
@@ -110,6 +113,7 @@ def build_graph(dart_tools: list[BaseTool], kifrs_tools: list[BaseTool],):
             "- Narrative summary of a specific report section → business_report_expert. "
             "- Amendment changes → amendment_expert. "
             "- K-IFRS standard citations → kifrs_expert. "
+            "For questions about accounting recognition, measurement, presentation, or disclosure, always invoke kifrs_expert and require K-IFRS paragraph citations. Do not answer only from general knowledge. "
             "For K-IFRS questions, relay kifrs_expert's answer with its inline '(근거: ...)' tags kept in place. "
             "Do NOT regroup citations into a list, and do NOT add or change any paragraph numbers that kifrs_expert did not provide. "
             "Do NOT use business_report_expert (which calls parse_business_report_xml) for numerical trend questions — that returns too much data and causes token overflow. "

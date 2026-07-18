@@ -9,6 +9,7 @@ from langchain_openai import OpenAIEmbeddings
 from mcp.server.fastmcp import FastMCP
 
 import os
+import sys
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -33,6 +34,9 @@ vectorstore = Chroma(
     embedding_function=embeddings,
     persist_directory=str(VECTOR_DIR),
 )
+
+
+CALL_COUNT = 0
 
 
 @mcp.tool()
@@ -64,6 +68,15 @@ def search_kifrs(query: str, top_k: int = 8) -> dict[str, Any]:
 
         ALWAYS cite (standard, paragraph) in the final answer.
     """
+    global CALL_COUNT
+    CALL_COUNT += 1
+
+    print(
+        f"[search_kifrs #{CALL_COUNT}] query={query}",
+        file=sys.stderr,
+        flush=True,
+    )
+
     hits = vectorstore.similarity_search(
         query=query,
         k=top_k,

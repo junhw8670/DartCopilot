@@ -596,28 +596,49 @@ def fetch_multi_company(corp_codes: list[str], year: int, report_code: str = "11
                 "year": year,
             }
         all_rows.extend(data.get("list", []))
+    rows_by_corp: dict[str, list[dict]] = {}
 
-    by_corp: dict[str, dict] = {}
     for raw in all_rows:
         cc = raw.get("corp_code")
-        if cc is None:
-            continue
-        if cc not in by_corp:
-            by_corp[cc] = {
-                "corp_code": cc,
-                "corp_name": raw.get("corp_name"),
-                "stock_code": raw.get("stock_code"),
-            }
-        account_nm = raw.get("account_nm")
-        if account_nm:
-            by_corp[cc][account_nm] = _parse_amount(raw.get("thstrm_amount"))
+        if cc:
+            rows_by_corp.setdefault(cc, []).append(raw)
+
+    by_corp: dict[str, dict] = {}
+
+    for cc, rows in rows_by_corp.items():
+        # 연결재무제표가 있으면 CFS, 없으면 OFS 사용
+        selected_fs = (
+            "CFS"
+            if any(row.get("fs_div") == "CFS" for row in rows)
+            else "OFS"
+        )
+
+        first_row = rows[0]
+        company = {
+            "corp_code": cc,
+            "corp_name": first_row.get("corp_name"),
+            "stock_code": first_row.get("stock_code"),
+            "fs_type": selected_fs,
+        }
+
+        for raw in rows:
+            if raw.get("fs_div") != selected_fs:
+                continue
+
+            account_nm = raw.get("account_nm")
+            if account_nm:
+                company[account_nm] = _parse_amount(
+                    raw.get("thstrm_amount")
+                )
+
+        by_corp[cc] = company
 
     return {
         "year": year,
         "report_code": report_code,
-        "companies": list(by_corp.values())
-    }    
-    
+        "companies": list(by_corp.values()),
+    }
+        
 
 @mcp.tool()
 def fetch_multi_years(corp_code: str, start_year: int, end_year: int) -> dict:
@@ -634,10 +655,10 @@ def fetch_multi_years(corp_code: str, start_year: int, end_year: int) -> dict:
     Returns:
         {
             "corp_code": "00126380",
-            "years": [2020, 2021, 2022, 2023, 2024],
+            "years": [20XX, 20XX, ...],
             "by_year": {
-                2020: {"매출액": ..., "영업이익": ..., ...},
-                2021: {...},
+                20XX: {"매출액": ..., "영업이익": ..., ...},
+                20XX: {...},
                 ...
             },
             "growth_rates": {

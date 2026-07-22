@@ -118,22 +118,29 @@ DartCopilot/
 #### 1) 사업보고서 요약
 <img src='results/사업보고서.png' width='1000'>
 
+---
+
 #### 2) 동종업종 비교분석
 <img src='results/동종1.png' width='1000'>
 <img src='results/동종2.png' width='1000'>
 <img src='results/동종3.png' width='1000'>
 <img src='results/동종4.png' width='1000'>
 <img src='results/동종5.png' width='1000'>
-<img src='results/동종6.png' width='1000'>
-<img src='results/동종7.png' width='1000'>  
+
+---
 
 #### 3) 다년도 시계열 추세 분석
-<img src='results/시계열.png' width='1000'> 
+<img src='results/시계열1.png' width='1000'> 
+<img src='results/시계열2.png' width='1000'> 
+
+---
 
 #### 4) 정정공시 변경사항 추출
 <img src='results/정정1.png' width='1000'>
 <img src='results/정정2.png' width='1000'>
 <img src='results/정정3.png' width='1000'>
+
+---
 
 #### 5) K-IFRS 회계기준을 인용한 분석 제공
 <img src='results/금융자산1.png' width='1000'>
@@ -142,6 +149,9 @@ DartCopilot/
 <br>
 <img src='results/리스.png' width='1000'>  
  
+---
 
 #### Codex Plugin
 <img src='results/codex_plugin_ex.png' width='1000'>
+
+> Q: 삼성전자와 같은 반도체 기업의 2025년 재무지표를 비교해줘.

@@ -7,6 +7,7 @@ from langgraph_supervisor import create_supervisor
 from langchain_core.tools import BaseTool
 
 from .llm_utils import get_llm
+from datetime import date
 
 model = get_llm()
 
@@ -113,11 +114,13 @@ def build_graph(dart_tools: list[BaseTool], kifrs_tools: list[BaseTool],):
             "- Narrative summary of a specific report section → business_report_expert. "
             "- Amendment changes → amendment_expert. "
             "- K-IFRS standard citations → kifrs_expert. "
+            "RECENT N years means literally RECENT. DO NOT JUDGE WHETHER THE DISCLOSURE IS SETTLED OR NOT; USE THE MOST RECENT AVAILABLE ONE. FOR EXAMPLE, IN 2026, 2025 DISCLOSURE IS MOST RECENT. "
             "For questions about accounting recognition, measurement, presentation, or disclosure, always invoke kifrs_expert and require K-IFRS paragraph citations. Do not answer only from general knowledge. "
             "For K-IFRS questions, relay kifrs_expert's answer with its inline '(근거: ...)' tags kept in place. "
             "Do NOT regroup citations into a list, and do NOT add or change any paragraph numbers that kifrs_expert did not provide. "
             "Do NOT use business_report_expert (which calls parse_business_report_xml) for numerical trend questions — that returns too much data and causes token overflow. "
             "Do NOT use ~~strikethrough~~ markdown syntax. "
+            "For profit-related metrics, if the sign changes between the prior and current period, do not report a percentage change; express positive-to-negative as 적자전환 and negative-to-positive as 흑자전환. " 
             "When expressing year ranges, write '2008년부터 2016년까지' or '2008-2016' (use hyphen, not tilde). "
             "Do NOT repeat the same words or phrases unnecessarily. Do NOT add redundant information."
         ),

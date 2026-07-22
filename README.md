@@ -136,16 +136,16 @@ DartCopilot/
 ---
 
 #### 4) 정정공시 변경사항 추출
-<img src='results/정정1.png' width='1000'>
-<img src='results/정정2.png' width='1000'>
-<img src='results/정정3.png' width='1000'>
+<img src='results/정정1.png' width='700'>
+<img src='results/정정2.png' width='700'>
+<img src='results/정정3.png' width='700'>
 
 ---
 
 #### 5) K-IFRS 회계기준을 인용한 분석 제공
-<img src='results/금융자산1.png' width='1000'>
-<img src='results/금융자산2.png' width='1000'>
-<img src='results/금융자산3.png' width='1000'>  
+<img src='results/금융자산1.png' width='700'>
+<img src='results/금융자산2.png' width='700'>
+<img src='results/금융자산3.png' width='700'>  
 <br>
 <img src='results/리스.png' width='1000'>  
  

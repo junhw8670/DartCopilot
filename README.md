@@ -5,11 +5,10 @@ OpenDART 공시·재무제표 데이터와 K-IFRS 회계기준서를 결합하�
 
 ### 이 프로젝트로 할 수 있는 것
 1. 사업보고서 요약
-2. 재무비율 산출
-3. 동종업종 비교분석
-4. 다년도 시계열 추세 분석
-5. 정정공시 변경사항 추출
-6. K-IFRS 회계기준을 인용한 분석 제공
+2. 동종업종 비교분석
+3. 다년도 시계열 추세 분석
+4. 정정공시 변경사항 추출
+5. K-IFRS 회계기준을 인용한 분석 제공
 
 ---
 
@@ -84,13 +83,11 @@ DartCopilot/
 
 사전에 정답 기준서를 지정한 30개 자연어 회계 질문을 대상으로 정답 기준서가 상위 검색 결과에 포함되는지를 평가하였다.  
 
-   검색 방식        Standard Recall@1    Standard Recall@3
-  ━━━━━━━━━━━━━━━  ━━━━━━━━━━━━━━━━━━━  ━━━━━━━━━━━━━━━━━━━
-   BM25                         73.3%                90.0%
-  ───────────────  ───────────────────  ───────────────────
-   Vector Search                86.7%               100.0%
-  ───────────────  ───────────────────  ───────────────────
-   Hybrid Search                76.7%                93.3%
+| 검색 방식 | Standard Recall@1 | Standard Recall@3 |
+|:---|---:|---:|
+| BM25 | 73.3% | 90.0% |
+| Vector Search | 86.7% | 100.0% |
+| Hybrid Search | 76.7% | 93.3% |
 
 평가 결과에 따라 Vector Search 적용하였다.
 
@@ -101,17 +98,13 @@ DartCopilot/
 실제 답변에 필요한 문단을 제대로 검색하는지 확인하기 위해 실무형 질문 25개로 추가 평가. 사용자 질문을 LLM이 회계
 검색어로 변환한 뒤 Vector Search를 수행했으며, 변환 결과가 매번 달라질 수 있어 총 5회 반복했다.
 
-   평가 지표              평균     최저     최고
-  ━━━━━━━━━━━━━━━━━━━━  ━━━━━━━  ━━━━━━━  ━━━━━━━
-   Paragraph Recall@1    42.4%    36.0%    52.0%
-  ────────────────────  ───────  ───────  ───────
-   Paragraph Recall@3    81.6%    72.0%    88.0%
-  ────────────────────  ───────  ───────  ───────
-   Paragraph Recall@5    88.0%    80.0%    96.0%
-  ────────────────────  ───────  ───────  ───────
-   Paragraph Recall@8    91.2%    88.0%    96.0%
-  ────────────────────  ───────  ───────  ───────
-   MRR                   0.616    0.550    0.703
+| 평가 지표 | 평균 | 최저 | 최고 |
+|:---|---:|---:|---:|
+| Paragraph Recall@1 | 42.4% | 36.0% | 52.0% |
+| Paragraph Recall@3 | 81.6% | 72.0% | 88.0% |
+| Paragraph Recall@5 | 88.0% | 80.0% | 96.0% |
+| Paragraph Recall@8 | 91.2% | 88.0% | 96.0% |
+| MRR | 0.616 | 0.550 | 0.703 |
 
 25개 중 21개 문항은 5회 모두 정답 문단 검색에 성공했다.
 검색어를 짧게 만드는 few-shot 프롬프트도 테스트했으나, 불필요한 표현과 함께 정답 판단에 필요한 조건까지 제거되는 경우가 있었다. 검색어의 간결성과 정보 보존 사이에 trade-off가 있음을 확인했다.
@@ -122,27 +115,33 @@ DartCopilot/
 ---
 
 ### 최종 산출물 (예시)
-#### 1) 동종업종 비교
-<img src='results/1.png' width='1000'>
-<img src='results/2.png' width='1000'>
-<img src='results/3.png' width='1000'>
-<img src='results/4.png' width='1000'>
-<img src='results/5.png' width='1000'>
-<img src='results/6.png' width='1000'>
-<img src='results/7.png' width='1000'>  
+#### 1) 사업보고서 요약
+<img src='results/사업보고서.png' width='1000'>
 
-#### 2) 기준서 인용
-<img src='results/8.png' width='1000'>
-<img src='results/9.png' width='1000'>
-<img src='results/10.png' width='1000'>  
+#### 2) 동종업종 비교분석
+<img src='results/동종1.png' width='1000'>
+<img src='results/동종2.png' width='1000'>
+<img src='results/동종3.png' width='1000'>
+<img src='results/동종4.png' width='1000'>
+<img src='results/동종5.png' width='1000'>
+<img src='results/동종6.png' width='1000'>
+<img src='results/동종7.png' width='1000'>  
+
+#### 3) 다년도 시계열 추세 분석
+<img src='results/시계열.png' width='1000'> 
+
+#### 4) 정정공시 변경사항 추출
+<img src='results/정정1.png' width='1000'>
+<img src='results/정정2.png' width='1000'>
+<img src='results/정정3.png' width='1000'>
+
+#### 5) K-IFRS 회계기준을 인용한 분석 제공
+<img src='results/금융자산1.png' width='1000'>
+<img src='results/금융자산2.png' width='1000'>
+<img src='results/금융자산3.png' width='1000'>  
 <br>
-<img src='results/11.png' width='1000'>  
-
-#### 3) 다년간 성장률
-<img src='results/12.png' width='1000'>  
-
-#### 4) 사업보고서 요약
-<img src='results/13.png' width='1000'>
+<img src='results/리스.png' width='1000'>  
+ 
 
 #### Codex Plugin
 <img src='results/codex_plugin_ex.png' width='1000'>

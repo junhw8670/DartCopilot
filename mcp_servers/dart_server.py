@@ -16,7 +16,63 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 load_dotenv(BASE_DIR / ".env")
 
-mcp = FastMCP("DartOpenAPI")
+  from collections import Counter
+  from datetime import datetime, timezone
+  import asyncio
+  import json
+  import time
+
+
+class TrackedFastMCP(FastMCP):
+    def __init__(self, *args, stats_path: Path, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.stats_path = stats_path
+        self.tool_counts = Counter()
+        self._stats_lock = asyncio.Lock()
+
+    async def call_tool(self, name: str, arguments: dict):
+        started = time.perf_counter()
+        success = False
+
+        try:
+            result = await super().call_tool(name, arguments)
+            success = True
+            return result
+        finally:
+            elapsed_ms = round(
+                (time.perf_counter() - started) * 1000,
+                1,
+            )
+
+            async with self._stats_lock:
+                self.tool_counts[name] += 1
+
+                record = {
+                    "timestamp": datetime.now(timezone.utc).isoformat(),
+                    "tool": name,
+                    "count": self.tool_counts[name],
+                    "success": success,
+                    "elapsed_ms": elapsed_ms,
+                }
+
+                self.stats_path.parent.mkdir(
+                    parents=True,
+                    exist_ok=True,
+                )
+
+                with self.stats_path.open(
+                    "a",
+                    encoding="utf-8",
+                ) as f:
+                    f.write(
+                        json.dumps(record, ensure_ascii=False) + "\n"
+                    )
+
+
+mcp = TrackedFastMCP(
+    "DartOpenAPI",
+    stats_path=BASE_DIR / "results" / "tool_calls.jsonl",
+)
 
 API_KEY = os.getenv("OPENDART_API_KEY")
 BASE_URL = "https://opendart.fss.or.kr/api"

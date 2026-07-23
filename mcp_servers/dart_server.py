@@ -71,7 +71,7 @@ class TrackedFastMCP(FastMCP):
 
 mcp = TrackedFastMCP(
     "DartOpenAPI",
-    stats_path=BASE_DIR / "results" / "tool_calls.jsonl",
+    stats_path=BASE_DIR / "results" / "dart_tool_calls.jsonl",
 )
 
 API_KEY = os.getenv("OPENDART_API_KEY")

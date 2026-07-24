@@ -16,11 +16,11 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 load_dotenv(BASE_DIR / ".env")
 
-  from collections import Counter
-  from datetime import datetime, timezone
-  import asyncio
-  import json
-  import time
+from collections import Counter
+from datetime import datetime, timezone
+import asyncio
+import json
+import time
 
 
 class TrackedFastMCP(FastMCP):
@@ -366,12 +366,12 @@ def fetch_report(rcept_no: str) -> dict:
 def parse_business_report_xml(xml_path: str, sections: Optional[list[str]] = None)  -> dict:
     """Parse a DART business report XML into a section-wise dict using BeautifulSoup.
 
-    Handles dart4.xsd-schema XML, extracting section text and structured table data
+    Handles dart4.xsd-schema XML, extracting section text
     (rows where <TU AUNIT=... AUNITVALUE=...> attributes carry the canonical values).
 
     Args:
         xml_path: Absolute path to main_xml returned by fetch_report.
-        sections: Section names to extract. If None, extracts all. For example, ["회사의 개요", "사업의 내용", "재무에 관한 사항", "임원 및 직원에 관한 사항"]
+        sections: Section names to extract. If None, extracts all except "재무에 관한 사항". For example, ["회사의 개요", "사업의 내용", "임원 및 직원에 관한 사항"]
 
     Returns:
         {
@@ -385,7 +385,7 @@ def parse_business_report_xml(xml_path: str, sections: Optional[list[str]] = Non
                 ...
             },
             "tables": [
-                {"section": "재무에 관한 사항",
+                {"section": "사업의 내용",
                  "rows": [["항목", "당기", "전기"], ["매출액","302231360", "279060475"], ...]}
             ]
         }
@@ -670,9 +670,18 @@ def fetch_multi_company(corp_codes: list[str], year: int, report_code: str = "11
         )
 
         first_row = rows[0]
+        company_info = next(
+            (
+                company
+                for company in _load_companies()
+                if company.get("corp_code") == cc
+            ),
+            {},
+        )
+
         company = {
             "corp_code": cc,
-            "corp_name": first_row.get("corp_name"),
+            "corp_name": company_info.get("corp_name"),
             "stock_code": first_row.get("stock_code"),
             "fs_type": selected_fs,
         }
@@ -730,7 +739,7 @@ def fetch_multi_years(corp_code: str, start_year: int, end_year: int) -> dict:
 
     years = list(range(start_year, end_year + 1))
 
-    INCOME_ACCOUNTS = {"매출액", "영업수익", "수익", "영업이익", "당기순이익", "법인세차감전순이익"}
+    INCOME_ACCOUNTS = {"매출액", "영업이익", "당기순이익", "법인세차감전순이익"}
     BALANCE_ACCOUNTS = {"자산총계", "부채총계", "자본총계"}
     KEY_ACCOUNTS = INCOME_ACCOUNTS | BALANCE_ACCOUNTS
 
@@ -749,12 +758,25 @@ def fetch_multi_years(corp_code: str, start_year: int, end_year: int) -> dict:
         year_data: dict[str, int | None] = {}
         for a in fin.get("accounts", []):
             nm = _norm(a.get("account_nm"))
+
+            ALIASES = {
+                "수익": "매출액",
+                "영업수익": "매출액",
+                "연결당기순이익": "당기순이익",
+                "법인세비용차감전순이익": "법인세차감전순이익",
+            }
+
+            nm = ALIASES.get(nm, nm)
+
             if nm not in KEY_ACCOUNTS:
                 continue
+
             if nm in INCOME_ACCOUNTS and a.get("sj_nm") not in INCOME_SJ:
                 continue
+
             if nm not in year_data:
                 year_data[nm] = a.get("thstrm_amount")
+
         by_year[year] = year_data
 
     all_accounts: set[str] = set()
@@ -875,9 +897,7 @@ def fetch_amendment_details(rcept_no: str) -> dict:
         return {"error": f"report fetch failed: {report['error']}"}
 
     raw = _read_xml(report["main_xml"])
-
-    head = raw[:300000]
-    soup = BeautifulSoup(head, "html.parser")
+    soup = BeautifulSoup(raw, "lxml-xml")
 
     comparison_tables = []
     for table in soup.find_all(re.compile(r"^table$", re.I)):

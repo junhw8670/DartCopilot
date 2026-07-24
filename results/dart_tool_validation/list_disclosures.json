@@ -1,0 +1,65 @@
+[
+  {
+    "input": {
+      "corp_code": "00126380",
+      "bgn_de": "20250101",
+      "end_de": "20250430",
+      "pblntf_ty": "A"
+    },
+    "result": {
+      "status": "000",
+      "total_count": 1,
+      "list": [
+        {
+          "rcept_no": "20250311001085",
+          "rcept_dt": "20250311",
+          "report_nm": "사업보고서 (2024.12)",
+          "corp_name": "삼성전자",
+          "is_amendment": false
+        }
+      ]
+    }
+  },
+  {
+    "input": {
+      "corp_code": "00164742",
+      "bgn_de": "20250101",
+      "end_de": "20250430",
+      "pblntf_ty": "A"
+    },
+    "result": {
+      "status": "000",
+      "total_count": 1,
+      "list": [
+        {
+          "rcept_no": "20250312001148",
+          "rcept_dt": "20250312",
+          "report_nm": "사업보고서 (2024.12)",
+          "corp_name": "현대자동차",
+          "is_amendment": false
+        }
+      ]
+    }
+  },
+  {
+    "input": {
+      "corp_code": "00266961",
+      "bgn_de": "20250101",
+      "end_de": "20250430",
+      "pblntf_ty": "A"
+    },
+    "result": {
+      "status": "000",
+      "total_count": 1,
+      "list": [
+        {
+          "rcept_no": "20250318000645",
+          "rcept_dt": "20250318",
+          "report_nm": "사업보고서 (2024.12)",
+          "corp_name": "NAVER",
+          "is_amendment": false
+        }
+      ]
+    }
+  }
+]

@@ -1,0 +1,35 @@
+[
+  {
+    "input": {
+      "name": "삼성전자"
+    },
+    "result": {
+      "corp_code": "00126380",
+      "stock_code": "005930",
+      "corp_name": "삼성전자",
+      "match_score": 1.0
+    }
+  },
+  {
+    "input": {
+      "name": "현대자동차"
+    },
+    "result": {
+      "corp_code": "00164742",
+      "stock_code": "005380",
+      "corp_name": "현대자동차",
+      "match_score": 1.0
+    }
+  },
+  {
+    "input": {
+      "name": "NAVER"
+    },
+    "result": {
+      "corp_code": "00266961",
+      "stock_code": "035420",
+      "corp_name": "NAVER",
+      "match_score": 1.0
+    }
+  }
+]

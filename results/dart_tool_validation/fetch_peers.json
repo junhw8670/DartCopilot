@@ -1,0 +1,125 @@
+[
+  {
+    "input": {
+      "corp_code": "00126380",
+      "top_k": 5
+    },
+    "result": {
+      "base_corp_code": "00126380",
+      "base_corp_name": "삼성전자",
+      "industry_name": "통신 및 방송 장비 제조업",
+      "market": "KOSPI",
+      "total_peers_in_industry": 64,
+      "peers": [
+        {
+          "corp_code": "00874803",
+          "corp_name": "AP위성",
+          "stock_code": "211270",
+          "market": "KOSDAQ"
+        },
+        {
+          "corp_code": "00303703",
+          "corp_name": "CS",
+          "stock_code": "065770",
+          "market": "KOSDAQ"
+        },
+        {
+          "corp_code": "00401731",
+          "corp_name": "LG전자",
+          "stock_code": "066570",
+          "market": "KOSPI"
+        },
+        {
+          "corp_code": "00462121",
+          "corp_name": "LIG아큐버",
+          "stock_code": "073490",
+          "market": "KOSDAQ"
+        },
+        {
+          "corp_code": "01078178",
+          "corp_name": "RFHIC",
+          "stock_code": "218410",
+          "market": "KOSDAQ"
+        }
+      ]
+    }
+  },
+  {
+    "input": {
+      "corp_code": "00164742",
+      "top_k": 5
+    },
+    "result": {
+      "base_corp_code": "00164742",
+      "base_corp_name": "현대자동차",
+      "industry_name": "자동차용 엔진 및 자동차 제조업",
+      "market": "KOSPI",
+      "total_peers_in_industry": 3,
+      "peers": [
+        {
+          "corp_code": "00117726",
+          "corp_name": "DYP",
+          "stock_code": "092780",
+          "market": "KOSPI"
+        },
+        {
+          "corp_code": "00138242",
+          "corp_name": "KG모빌리티",
+          "stock_code": "003620",
+          "market": "KOSPI"
+        },
+        {
+          "corp_code": "00106641",
+          "corp_name": "기아",
+          "stock_code": "000270",
+          "market": "KOSPI"
+        }
+      ]
+    }
+  },
+  {
+    "input": {
+      "corp_code": "00266961",
+      "top_k": 5
+    },
+    "result": {
+      "base_corp_code": "00266961",
+      "base_corp_name": "NAVER",
+      "industry_name": "자료처리, 호스팅, 포털 및 기타 인터넷 정보매개 서비스업",
+      "market": "KOSPI",
+      "total_peers_in_industry": 14,
+      "peers": [
+        {
+          "corp_code": "00249247",
+          "corp_name": "YG PLUS",
+          "stock_code": "037270",
+          "market": "KOSPI"
+        },
+        {
+          "corp_code": "00176914",
+          "corp_name": "다우기술",
+          "stock_code": "023590",
+          "market": "KOSPI"
+        },
+        {
+          "corp_code": "00231442",
+          "corp_name": "디지틀조선",
+          "stock_code": "033130",
+          "market": "KOSDAQ"
+        },
+        {
+          "corp_code": "00857480",
+          "corp_name": "사람인",
+          "stock_code": "143240",
+          "market": "KOSDAQ"
+        },
+        {
+          "corp_code": "00665676",
+          "corp_name": "아시아경제",
+          "stock_code": "127710",
+          "market": "KOSDAQ"
+        }
+      ]
+    }
+  }
+]

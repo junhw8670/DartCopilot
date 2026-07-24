@@ -1,0 +1,47 @@
+[
+  {
+    "input": {
+      "rcept_no": "20250311001085"
+    },
+    "result": {
+      "rcept_no": "20250311001085",
+      "xml_paths": [
+        "C:\\DartCopilot\\cache\\20250311001085\\20250311001085.xml",
+        "C:\\DartCopilot\\cache\\20250311001085\\20250311001085_00760.xml",
+        "C:\\DartCopilot\\cache\\20250311001085\\20250311001085_00761.xml"
+      ],
+      "main_xml": "C:\\DartCopilot\\cache\\20250311001085\\20250311001085.xml",
+      "size_bytes": 7597493
+    }
+  },
+  {
+    "input": {
+      "rcept_no": "20250312001148"
+    },
+    "result": {
+      "rcept_no": "20250312001148",
+      "xml_paths": [
+        "C:\\DartCopilot\\cache\\20250312001148\\20250312001148.xml",
+        "C:\\DartCopilot\\cache\\20250312001148\\20250312001148_00760.xml",
+        "C:\\DartCopilot\\cache\\20250312001148\\20250312001148_00761.xml"
+      ],
+      "main_xml": "C:\\DartCopilot\\cache\\20250312001148\\20250312001148.xml",
+      "size_bytes": 9918817
+    }
+  },
+  {
+    "input": {
+      "rcept_no": "20250318000645"
+    },
+    "result": {
+      "rcept_no": "20250318000645",
+      "xml_paths": [
+        "C:\\DartCopilot\\cache\\20250318000645\\20250318000645.xml",
+        "C:\\DartCopilot\\cache\\20250318000645\\20250318000645_00760.xml",
+        "C:\\DartCopilot\\cache\\20250318000645\\20250318000645_00761.xml"
+      ],
+      "main_xml": "C:\\DartCopilot\\cache\\20250318000645\\20250318000645.xml",
+      "size_bytes": 9619480
+    }
+  }
+]

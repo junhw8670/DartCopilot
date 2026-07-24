@@ -1,5 +1,5 @@
 # DART·K-IFRS Copilot
-OpenDART 공시·재무제표 데이터와 K-IFRS 회계기준서를 결합하여, 사용자의 자연어 질문을 분석하고 근거가 포함된 답변을 제공하는 회계·재무 특화 AI 시스템입니다.
+    OpenDART 공시·재무제표 데이터와 K-IFRS 회계기준서를 기반으로 사용자의 자연어 질문을 분석하고 근거가 포함된 답변을 제공하는 회계·재무 특화 멀티에이전트 시스템입니다.
 
 ---
 
@@ -54,11 +54,19 @@ DartCopilot/
         dart_server.py    # FastMCP 기반 DART OpenAPI MCP 서버
         kifrs_server.py   # FastMCP 기반 K-IFRS RAG MCP 서버
     scripts/
-        build_industry_cache.py
-        build_kifrs_index.py
-        kifrs_search_test.py
-        OpenDART_API_test.py
-        OpenDART_document_test.py
+        build_industry_cache.py     # 산업분류코드 JSON 인덱스 생성
+        build_kifrs_index.py        # K-IFRS 벡터 인덱스 생성
+
+        kifrs_search_test.py        # BM25·Vector·Hybrid 검색 결과 비교
+        kifrs_supervisor_test.py    # K-IFRS 툴 호출 구조 검증
+
+        dart_tool_test.py           # DART MCP 툴 실행·반환 구조 확인
+        OpenDART_API_test.py        # OpenDART 원본 API 호출·응답 확인
+        OpenDART_document_test.py   # 공시 원문 ZIP·XML 다운로드 확인
+    results/
+        dart_tool_validation/       # dart_tool_test.py 실행 결과
+        dart_tool_calls.jsonl       # DART MCP 툴 실행 내역 기록
+        kifrs_tool_calls.jsonl      # K-IFRS 툴 실행 내역 기록
     docs/
         devlog/           # 개발일지
     cache/                
@@ -116,42 +124,42 @@ DartCopilot/
 
 ### 최종 산출물 (예시)
 #### 1) 사업보고서 요약
-<img src='results/사업보고서.png' width='1000'>
+<img src='results/img/사업보고서.png' width='1000'>
 
 ---
 
 #### 2) 동종업종 비교분석
-<img src='results/동종1.png' width='1000'>
-<img src='results/동종2.png' width='1000'>
-<img src='results/동종3.png' width='1000'>
-<img src='results/동종4.png' width='1000'>
-<img src='results/동종5.png' width='1000'>
+<img src='results/img/동종1.png' width='1000'>
+<img src='results/img/동종2.png' width='1000'>
+<img src='results/img/동종3.png' width='1000'>
+<img src='results/img/동종4.png' width='1000'>
+<img src='results/img/동종5.png' width='1000'>
 
 ---
 
 #### 3) 다년도 시계열 추세 분석
-<img src='results/시계열1.png' width='1000'> 
-<img src='results/시계열2.png' width='1000'> 
+<img src='results/img/시계열1.png' width='1000'> 
+<img src='results/img/시계열2.png' width='1000'> 
 
 ---
 
 #### 4) 정정공시 변경사항 추출
-<img src='results/정정1.png' width='700'>
-<img src='results/정정2.png' width='700'>
-<img src='results/정정3.png' width='700'>
+<img src='results/img/정정1.png' width='700'>
+<img src='results/img/정정2.png' width='700'>
+<img src='results/img/정정3.png' width='700'>
 
 ---
 
 #### 5) K-IFRS 회계기준을 인용한 분석 제공
-<img src='results/금융자산1.png' width='700'>
-<img src='results/금융자산2.png' width='700'>
-<img src='results/금융자산3.png' width='700'>  
+<img src='results/img/금융자산1.png' width='700'>
+<img src='results/img/금융자산2.png' width='700'>
+<img src='results/img/금융자산3.png' width='700'>  
 <br>
-<img src='results/리스.png' width='1000'>  
+<img src='results/img/리스.png' width='1000'>  
  
 ---
 
 #### Codex Plugin
-<img src='results/codex_plugin_ex.png' width='1000'>
+<img src='results/img/codex_plugin_ex.png' width='1000'>
 
 > Q: 삼성전자와 같은 반도체 기업의 2025년 재무지표를 비교해줘.

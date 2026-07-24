@@ -107,7 +107,7 @@ vectorstore = Chroma(
 )
 
 
-CALL_COUNT = 0
+# CALL_COUNT = 0
 
 
 @mcp.tool()
@@ -139,14 +139,14 @@ def search_kifrs(query: str, top_k: int = 8) -> dict[str, Any]:
 
         ALWAYS cite (standard, paragraph) in the final answer.
     """
-    global CALL_COUNT
-    CALL_COUNT += 1
+    # global CALL_COUNT
+    # CALL_COUNT += 1
 
-    print(
-        f"[search_kifrs #{CALL_COUNT}] query={query}",
-        file=sys.stderr,
-        flush=True,
-    )
+    # print(
+    #     f"[search_kifrs #{CALL_COUNT}] query={query}",
+    #     file=sys.stderr,
+    #     flush=True,
+    # )
 
     hits = vectorstore.similarity_search(
         query=query,
